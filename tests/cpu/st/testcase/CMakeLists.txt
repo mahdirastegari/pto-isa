@@ -132,6 +132,7 @@ trowmax
 trowmin
 trowreduceidx
 trowsum
+trowprod
 trsqrt
 tscatter
 tsel
