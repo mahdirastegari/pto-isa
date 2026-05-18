@@ -79,8 +79,8 @@ This page is the source-synchronized ISA index generated from `docs/isa/manifest
 | Axis Reduce / Expand | [`TROWMIN`](isa/tile/ops/reduce-and-expand/trowmin.md) | Reduce each row by taking the minimum across columns. |
 | Axis Reduce / Expand | [`TROWARGMAX`](isa/tile/ops/reduce-and-expand/trowargmax.md) | Get the column index of the maximum element for each row. |
 | Axis Reduce / Expand | [`TROWARGMIN`](isa/tile/ops/reduce-and-expand/trowargmin.md) | Get the column index of the minimum element for each row. |
-| Axis Reduce / Expand | [`TCOLARGMAX`](isa/tile/ops/reduce-and-expand/tcolargmax.md) | Get the row index of the maximum element for each column. |
-| Axis Reduce / Expand | [`TCOLARGMIN`](isa/tile/ops/reduce-and-expand/tcolargmin.md) | Get the row index of the minimum element for each column. |
+| Axis Reduce / Expand | [`TCOLARGMAX`](isa/tile/ops/reduce-and-expand/tcolargmax.md) | Get the row index, or both value and row index, of the maximum element for each column. |
+| Axis Reduce / Expand | [`TCOLARGMIN`](isa/tile/ops/reduce-and-expand/tcolargmin.md) | Get the row index, or both value and row index, of the minimum element for each column. |
 | Axis Reduce / Expand | [`TROWEXPAND`](isa/tile/ops/reduce-and-expand/trowexpand.md) | Broadcast the first element of each source row across the destination row. |
 | Axis Reduce / Expand | [`TROWEXPANDDIV`](isa/tile/ops/reduce-and-expand/trowexpanddiv.md) | Row-wise broadcast divide: divide each row of `src0` by a per-row scalar vector `src1`. |
 | Axis Reduce / Expand | [`TROWEXPANDMUL`](isa/tile/ops/reduce-and-expand/trowexpandmul.md) | Row-wise broadcast multiply: multiply each row of `src0` by a per-row scalar vector `src1`. |
