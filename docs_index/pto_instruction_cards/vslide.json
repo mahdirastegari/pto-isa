@@ -1,0 +1,27 @@
+{
+  "category": "Data Rearrangement",
+  "constraints": "!!! warning \"Constraints\"\n    - `%src0`, `%src1`, and `%result` MUST have the same element type and vector width.\n    - The slide amount MUST satisfy the range supported by the selected target profile.\n    - Lowering MUST preserve the `%src1 || %src0` concatenation order.",
+  "cpp_intrinsic": "",
+  "examples": [
+    "// tmp[0..2N-1] = {src1, src0}\n// dst[i] = tmp[amt + i]"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - The verifier rejects illegal operand shapes, unsupported element types, and attribute combinations that are not valid for the selected instruction set or target profile.\n    - Any additional illegality stated in the constraints section is also part of the contract.",
+  "instruction_set_path": [
+    "9. Vector Instruction Reference",
+    "Data Rearrangement"
+  ],
+  "mnemonic": "VSLIDE",
+  "name": "pto.vslide",
+  "operands": [
+    "src0",
+    "src1",
+    "amt"
+  ],
+  "outputs": [],
+  "sources": [
+    "docs/isa/vector/ops/data-rearrangement/vslide.md"
+  ],
+  "summary": "Concatenate two vectors and extract an N-element window at a scalar offset.",
+  "syntax": "vslide %dst, %src0, %src1, %amt",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - A5 is the most detailed concrete profile in the current manual; CPU simulation and A2/A3-class targets may support narrower subsets or emulate the behavior while preserving the visible PTO contract.\n    - Code that depends on an instruction-set-specific packing, selector, or permutation mode should treat that dependency as target-profile-specific unless the manual states cross-target portability explicitly."
+}

@@ -1,0 +1,25 @@
+{
+  "category": "Data Rearrangement",
+  "constraints": "!!! warning \"Constraints\"\n    - The front-packed source stream is implicit in the selected instruction form and target profile.\n    - Lane placement for active and inactive positions MUST be preserved exactly.\n    - Unselected lanes are zero-filled.",
+  "cpp_intrinsic": "",
+  "examples": [
+    "int j = 0;\nfor (int i = 0; i < N; i++)\n    if (mask[i]) dst[i] = src_front[j++];\n    else dst[i] = 0;"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - The verifier rejects illegal operand shapes, unsupported element types, and attribute combinations that are not valid for the selected instruction set or target profile.\n    - Any additional illegality stated in the constraints section is also part of the contract.",
+  "instruction_set_path": [
+    "9. Vector Instruction Reference",
+    "Data Rearrangement"
+  ],
+  "mnemonic": "VUSQZ",
+  "name": "pto.vusqz",
+  "operands": [
+    "mask"
+  ],
+  "outputs": [],
+  "sources": [
+    "docs/isa/vector/ops/data-rearrangement/vusqz.md"
+  ],
+  "summary": "Expand a front-packed stream back into the positions selected by a mask.",
+  "syntax": "vusqz %dst, %mask",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - A5 is the most detailed concrete profile in the current manual; CPU simulation and A2/A3-class targets may support narrower subsets or emulate the behavior while preserving the visible PTO contract.\n    - Code that depends on an instruction-set-specific packing, selector, or permutation mode should treat that dependency as target-profile-specific unless the manual states cross-target portability explicitly."
+}

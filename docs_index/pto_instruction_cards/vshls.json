@@ -1,0 +1,27 @@
+{
+  "category": "Vector-Scalar Instructions",
+  "constraints": "!!! warning \"Constraints\"\n    - Shift forms are defined for integer element types only.\n    - Portable code SHOULD keep the shift count below the element width of `T`.\n    - `%input` and `%result` MUST have the same vector width `N` and element type `T`.",
+  "cpp_intrinsic": "",
+  "examples": [
+    "for (int i = 0; i < N; i++)\n    if (mask[i])\n        dst[i] = src[i] << scalar;"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - The verifier rejects illegal operand shapes, unsupported element types, and attribute combinations that are not valid for the selected instruction set or target profile.\n    - Any additional illegality stated in the constraints section is also part of the contract.",
+  "instruction_set_path": [
+    "9. Vector Instruction Reference",
+    "Vector-Scalar Instructions"
+  ],
+  "mnemonic": "VSHLS",
+  "name": "pto.vshls",
+  "operands": [
+    "input",
+    "scalar",
+    "mask"
+  ],
+  "outputs": [],
+  "sources": [
+    "docs/isa/vector/ops/vec-scalar-ops/vshls.md"
+  ],
+  "summary": "Lane-wise logical left shift by a broadcast scalar amount.",
+  "syntax": "vshls %dst, %src, %shift, %mask : !pto.vreg<NxT>, T",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - Integer element types only.\n    - A5 is the most detailed concrete profile in the current manual; CPU simulation and A2/A3-class targets may support narrower subsets or emulate the behavior while preserving the visible PTO contract."
+}

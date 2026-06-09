@@ -1,0 +1,29 @@
+{
+  "category": "Data Rearrangement",
+  "constraints": "!!! warning \"Constraints\"\n    - `%lhs`, `%rhs`, `%low`, and `%high` MUST have the same element type and vector width.\n    - The result pair ordering is architectural and MUST be preserved by lowering.",
+  "cpp_intrinsic": "",
+  "examples": [
+    "// low  = {lhs[0], rhs[0], lhs[1], rhs[1], ...}\n// high = {lhs[N/2], rhs[N/2], lhs[N/2+1], rhs[N/2+1], ...}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - The verifier rejects illegal operand shapes, unsupported element types, and attribute combinations that are not valid for the selected instruction set or target profile.\n    - Any additional illegality stated in the constraints section is also part of the contract.",
+  "instruction_set_path": [
+    "9. Vector Instruction Reference",
+    "Data Rearrangement"
+  ],
+  "mnemonic": "VINTLV",
+  "name": "pto.vintlv",
+  "operands": [
+    "lhs",
+    "rhs"
+  ],
+  "outputs": [
+    "low",
+    "high"
+  ],
+  "sources": [
+    "docs/isa/vector/ops/data-rearrangement/vintlv.md"
+  ],
+  "summary": "Interleave two source vectors into an ordered low/high result pair.",
+  "syntax": "vintlv %low, %high, %lhs, %rhs",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - A5 is the most detailed concrete profile in the current manual; CPU simulation and A2/A3-class targets may support narrower subsets or emulate the behavior while preserving the visible PTO contract.\n    - Code that depends on an instruction-set-specific packing, selector, or permutation mode should treat that dependency as target-profile-specific unless the manual states cross-target portability explicitly."
+}

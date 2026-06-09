@@ -1,0 +1,31 @@
+{
+  "category": "Elementwise Tile Tile",
+  "constraints": "!!! warning \"Constraints\"\n    - `sizeof(TileData::DType)` MUST be `2` or `4` bytes.\n    - `dst`, `src0`, and `src1` MUST use the **same element type**.\n    - `dst`, `src0`, and `src1` MUST be row-major layout.\n    - `dst`, `src0`, and `src1` MUST have the same declared shape.\n    - `selMask` layout MUST be compatible with the target's predicate unpacking format.\n    - The iteration domain is `dst.GetValidRow()` \u00d7 `dst.GetValidCol()`.\n    - `tmp` MUST have sufficient capacity to hold intermediate predicate bits; its exact requirements are target-defined.",
+  "cpp_intrinsic": "template <typename TileData, typename MaskTile, typename TmpTile, typename... WaitEvents>\nPTO_INST RecordEvent TSEL(TileData &dst, MaskTile &selMask, TileData &src0,\n                          TileData &src1, TmpTile &tmp, WaitEvents &... events);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\n\nusing namespace pto;\n\nvoid example_auto() {\n  using TileT = Tile<TileType::Vec, float, 16, 16>;\n  using MaskT = Tile<TileType::Vec, uint8_t, 16, 32, BLayout::RowMajor, -1, -1>;\n  using TmpT = Tile<TileType::Vec, uint32_t, 1, 16>;\n  TileT src0, src1, dst;\n  MaskT mask(16, 2);\n  TmpT tmp;\n  TSEL(dst, mask, src0, src1, tmp);\n}"
+  ],
+  "illegal_cases": "",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Elementwise Tile Tile"
+  ],
+  "mnemonic": "TSEL",
+  "name": "pto.tsel",
+  "operands": [
+    "dst",
+    "mask",
+    "src0",
+    "src1",
+    "tmp"
+  ],
+  "outputs": [
+    "dst"
+  ],
+  "sources": [
+    "docs/isa/tile/ops/elementwise-tile-tile/tsel.md"
+  ],
+  "summary": "Per-element conditional selection between two tiles using a predicate mask.",
+  "syntax": "%dst = tsel %mask, %src0, %src1 : !pto.tile<...>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    | Check | A2/A3 | A5 |\n    |-------|:-----:|:--:|\n    | Supported dtypes | `int16_t`, `uint16_t`, `int32_t`, `uint32_t`, `half`, `bfloat16_t`, `float` | Same |\n    | sizeof(dtype) | 2 or 4 bytes | Same |\n    | Row-major layout | Required | Required |\n    | Same shape (dst/src0/src1) | Required | Required |\n    | `tmp` tile required | Yes | Yes |"
+}

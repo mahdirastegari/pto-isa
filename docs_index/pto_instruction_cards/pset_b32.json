@@ -1,0 +1,33 @@
+{
+  "category": "Predicate Generation And Algebra",
+  "constraints": "!!! warning \"Constraints\"\n    - **Pattern token validity**: The pattern token MUST be valid for a 32-bit predicate width. Using a `PAT_VL*` token with N > 32 is **illegal**.\n    - **Predicate context**: The `_b32` predicate can be combined with another `_b32` using `ppack` to form a 64-bit predicate for f32 vector width (N=64).",
+  "cpp_intrinsic": "vector_bool mask = pset_b32(__cce_simd::PAT_VL16);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\nusing namespace pto;\n\nvoid set_all_active(RegBuf<predicate_t>& dst) {\n    PSET_B32(dst, \"PAT_ALL\");\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal if the pattern token is not valid for the `_b32` (32-bit) variant.\n    - Illegal if the pattern token is not supported by the target profile.",
+  "instruction_set_path": [
+    "10. Scalar And Control Reference",
+    "Predicate Generation And Algebra"
+  ],
+  "mnemonic": "PSET_B32",
+  "name": "pto.pset_b32",
+  "operands": [
+    "Pattern",
+    "PAT_ALL",
+    "PAT_ALLF",
+    "PAT_H",
+    "PAT_Q",
+    "PAT_M3",
+    "PAT_M4"
+  ],
+  "outputs": [
+    "mask"
+  ],
+  "sources": [
+    "docs/isa/scalar/ops/predicate-generation-and-algebra/pset-b32.md"
+  ],
+  "summary": "Construct a 32-bit predicate mask from a compile-time pattern token.",
+  "syntax": "%mask = pto.pset_b32 \"PATTERN\" : !pto.mask<b32>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    | Aspect | CPU Sim | A2/A3 | A5 |\n    |--------|:-------:|:------:|:--:|\n    | All pattern tokens | Simulated | Supported | Supported |\n    | 32-bit predicate width | Supported | Supported | Supported |"
+}

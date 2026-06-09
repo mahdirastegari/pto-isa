@@ -1,0 +1,29 @@
+{
+  "category": "Pipeline Sync",
+  "constraints": "!!! warning \"Constraints\"\n    - The selected pipe identifiers must be valid for the target profile.\n    - The event identifier must be within the supported range for the target profile.\n    - The event protocol is directional; using the wrong pipe role is undefined behavior.\n    - Portable code must pair each `set_flag` with a corresponding `wait_flag` in the intended dependency chain.",
+  "cpp_intrinsic": "",
+  "examples": [],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Using invalid pipe identifiers or out-of-range event identifiers is rejected by the verifier.\n    - Signaling an event before the producing operation has started produces undefined results.\n    - Consuming an event that has not been signaled causes the consumer pipeline to wait indefinitely.",
+  "instruction_set_path": [
+    "10. Scalar And Control Reference",
+    "Pipeline Sync"
+  ],
+  "mnemonic": "SET_FLAG",
+  "name": "pto.set_flag",
+  "operands": [
+    "SRC_PIPE",
+    "DST_PIPE",
+    "EVENT_ID",
+    "Pipe",
+    "PIPE_MTE2",
+    "PIPE_V",
+    "PIPE_MTE3"
+  ],
+  "outputs": [],
+  "sources": [
+    "docs/isa/scalar/ops/pipeline-sync/set-flag.md"
+  ],
+  "summary": "Signal an event from one pipeline to another pipeline. This is the producer half of the explicit event protocol that connects MTE, vector, and other execution stages.",
+  "syntax": "set_flag[\"SRC_PIPE\", \"DST_PIPE\", \"EVENT_ID\"]",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    | Profile | Pipe Support | Event ID Range |\n    |---------|-------------|----------------|\n    | CPU Simulator | All pipes emulated | Unlimited |\n    | A2/A3 | `PIPE_MTE2`, `PIPE_V`, `PIPE_MTE3` | Profile-defined |\n    | A5 | `PIPE_MTE2`, `PIPE_V`, `PIPE_MTE3` | Profile-defined |\n\n    CPU simulation preserves the event protocol semantics but may not expose all low-level hazards that motivate it on hardware."
+}

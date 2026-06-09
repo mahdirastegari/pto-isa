@@ -1,0 +1,9 @@
+// Auto-generated correctness-first PTO Auto-mode kernel plan for add_relu.
+// Formula: C[i, j] = max(A[i, j] + B[i, j], 0)
+// Tail handling: boundary tiles are guarded by valid M/N regions before TSTORE.
+// DType/layout: fp16 row-major [M, N].
+TLOAD(aTile, aGlobal);
+TLOAD(bTile, bGlobal);
+TADD(sumTile, aTile, bTile);
+TRELU(cTile, sumTile);
+TSTORE(cGlobal, cTile);

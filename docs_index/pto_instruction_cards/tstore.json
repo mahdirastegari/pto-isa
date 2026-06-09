@@ -1,0 +1,30 @@
+{
+  "category": "Memory And Data Movement",
+  "constraints": "!!! warning \"Constraints\"\n    - **Valid region**: Transfer size is `src.GetValidRow()` \u00d7 `src.GetValidCol()`.\n    - **Element size match**: `sizeof(tile.dtype) == sizeof(gtensor.dtype)`.\n    - **Layout compatibility**: Tile layout and GM layout must be a supported combination. See target-specific restrictions below.\n    - **Atomic modes**: Only supported on `TileType::Acc`. Supported modes: `AtomicNone`, `AtomicAdd`, `AtomicMax`, `AtomicMin` (A5 only).\n    - **Fix-pipe**: Only `TileType::Acc` is supported as the source. The `fp` tile must be `TileType::Scaling`. The fix-pipe path does not support arbitrary `ReluPreMode` on all backends \u2014 see target restrictions.",
+  "cpp_intrinsic": "",
+  "examples": [],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal operand tuples, unsupported types, invalid layout combinations, or unsupported target-profile modes are rejected by the verifier.\n    - Programs must not rely on behavior outside the documented legal domain.\n    - Calling `TSTORE_FP` on a non-accumulator tile is rejected by the backend.",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Memory And Data Movement"
+  ],
+  "mnemonic": "TSTORE",
+  "name": "pto.tstore",
+  "operands": [
+    "dst",
+    "src",
+    "fp",
+    "atomicType",
+    "preQuantScalar",
+    "reluPreMode"
+  ],
+  "outputs": [
+    "RecordEvent"
+  ],
+  "sources": [
+    "docs/isa/tile/ops/memory-and-data-movement/tstore.md"
+  ],
+  "summary": "`pto.tstore` initiates a DMA transfer from a source tile to global memory. It writes a rectangular region from the source tile into a GlobalTensor. Two storage-path variants are provided:\n\n| Variant | Suffix | Description | Tile Types | Use Case |\n|---------|---------|-------------|-----------|----------|\n| Standard store | *(none)* | Direct tile-to-GM transfer | `Vec`, `Mat`, `Acc` | General tile output |\n| Fix-pipe store | `_fp` | Store through fix-pipe quantization path | `Acc` | Quantized accumulation output |",
+  "syntax": "tstore %t1, %sv_out[%c0, %c0]",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    === \"A2/A3\"\n        **Standard store:**\n\n        | Source Tile Type | Requirements |\n        |-----------------|-------------|\n        | `Vec` / `Mat` | `sizeof(TileData::DType)` must match `sizeof(GlobalData::DType)`. Supported dtypes: `int8_t`, `uint8_t`, `int16_t`, `uint16_t`, `int32_t`, `uint32_t`, `int64_t`, `uint64_t`, `half`, `bfloat16_t`, `float`. |\n        | `Acc` (non-quantized) | Destination dtype must be `__gm__ int32_t / float / half / bfloat16_t`. |\n        | `Acc` (atomic) | AtomicAdd on `int32_t` or `float`. |\n        | `int64_t/uint64_t` | Only ND\u2192ND or DN\u2192DN layout. |\n\n        **Accumulator shape constraints (A2/A3):**\n        - `1 <= TileData::Cols <= 4095`\n        - If ND layout: `1 <= TileData::Rows <= 8192`\n        - If NZ layout: `1 <= TileData::Rows <= 65535` and `TileData::Cols % 16 == 0`\n\n        **Fix-pipe store (TSTORE_FP on A2/A3):**\n\n        | Requirement | Value |\n        |------------|-------|\n        | Destination layout | ND or NZ only |\n        | Source dtype | `int32_t` or `float` |\n        | Static row constraint | `1 <= TileData::Cols <= 4095`; ND: `Rows <= 8192`; NZ: `Rows <= 65535`, `Cols % 16 == 0` |\n        | Runtime col constraint | `1 <= src.GetValidCol() <= 4095` |\n        | FpTileData | No explicit `static_assert`; used via `set_fpc(...)` internally |\n\n    === \"A5\"\n        **Standard store:**\n\n        | Source Tile Type | Notes |\n        |-----------------|-------|\n        | `Vec` | `sizeof(TileData::DType)` must match `sizeof(GlobalData::DType)`. Additional dtypes on A5: `float8_e4m3_t`, `float8_e5m2_t`, `hifloat8_t`, `float4_e1m2x2_t`, `float4_e2m1x2_t`. |\n        | `Acc` | Destination layout must be ND or NZ. Source dtype must be `int32_t` or `float`. Additional alignment: ND row-major width in bytes must be a multiple of 32. |\n        | `Acc` (atomic) | `AtomicAdd`, `AtomicMax`, `AtomicMin` on `int32_t`. |\n\n        **Fix-pipe store (TSTORE_FP on A5):**\n\n        | Requirement | Value |\n        |------------|-------|\n        | Destination layout | ND or NZ |\n        | Source dtype | `int32_t` or `float` |\n        | FpTileData | Used via `CheckStaticAcc<..., true>()` validation |"
+}

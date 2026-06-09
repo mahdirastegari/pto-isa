@@ -1,0 +1,28 @@
+{
+  "category": "Predicate Load Store",
+  "constraints": "!!! warning \"Constraints\"\n    - **UB address space**: `%ub_ptr` MUST have address space `ub`.\n    - **Offset alignment**: The offset register MUST be set such that `base + areg * 8` is 64-bit aligned. Misaligned effective addresses are **illegal**.\n    - **Distribution mode**: The `dist` attribute MUST be one of `\"NORM\"`, `\"US\"`, or `\"DS\"`. Other modes are **illegal** for this form.\n    - **Predicate width**: The load transfers exactly 64 bits, which MUST match the active element type context.\n    - **Single active predicate**: Loading a new predicate does not implicitly save a prior predicate. Programs that need to preserve predicate state MUST save it first.",
+  "cpp_intrinsic": "vector_bool dst;\n__ubuf__ uint32_t *base;\nvector_address offset;\npld(dst, base, offset, __cce_simd::NORM);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\nusing namespace pto;\n\nvoid load_with_offset(RegBuf<predicate_t>& dst,\n                      Ptr<ub_space_t, ub_t> base,\n                      int32_t slot) {\n    // slot is in units of 8 bytes (one predicate word per slot)\n    PLD(dst, base, slot, \"NORM\");\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal if `%ub_ptr` is not a UB-space pointer.\n    - Illegal if the effective address (base + areg * 8) is not 64-bit aligned.\n    - Illegal if `dist` attribute is not a supported distribution mode.",
+  "instruction_set_path": [
+    "10. Scalar And Control Reference",
+    "Predicate Load Store"
+  ],
+  "mnemonic": "PLD",
+  "name": "pto.pld",
+  "operands": [
+    "ub_ptr",
+    "areg"
+  ],
+  "outputs": [
+    "mask"
+  ],
+  "sources": [
+    "docs/isa/scalar/ops/predicate-load-store/pld.md"
+  ],
+  "summary": "Load the full predicate register from a UB location with a register-relative address offset.",
+  "syntax": "%mask = pto.pld %ub_ptr, %areg, \"DIST\" : !pto.ptr<i64, ub>, i32 -> !pto.mask<G>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    | Aspect | CPU Sim | A2/A3 | A5 |\n    |--------|:-------:|:------:|:--:|\n    | Register-offset predicate load | Simulated | Supported | Supported |\n    | `\"NORM\"` distribution mode | Supported | Supported | Supported |\n    | `\"US\"` / `\"DS\"` distribution modes | Simulated | Supported | Supported |"
+}

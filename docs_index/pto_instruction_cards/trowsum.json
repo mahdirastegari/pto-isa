@@ -1,0 +1,30 @@
+{
+  "category": "Reduce And Expand",
+  "constraints": "!!! warning \"Constraints\"\n    ### Tile Types\n\n    - `src` and `dst` must both be `TileType::Vec`.\n\n    ### Layout\n\n    - `src` must use standard ND layout: `BLayout::RowMajor`, `SLayout::NoneBox`.\n    - `dst` must use one of:\n      - ND layout: `BLayout::RowMajor`, `SLayout::NoneBox`, `Cols == 1`, or\n      - DN layout: `BLayout::ColMajor`, `SLayout::NoneBox`, `Cols == 1`.\n    - `src` and `dst` must have the same element type.\n\n    ### Valid Region\n\n    - `src.GetValidRow() > 0`\n    - `src.GetValidCol() > 0`\n    - `dst.GetValidRow() == src.GetValidRow()`\n\n    ### Element Types\n\n    Supported: `half`, `float`, `int32_t`, `int16_t`.",
+  "cpp_intrinsic": "template <typename TileDataOut, typename TileDataIn, typename TileDataTmp, typename... WaitEvents>\nPTO_INST RecordEvent TROWSUM(TileDataOut &dst, TileDataIn &src, TileDataTmp &tmp, WaitEvents &... events);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\nusing namespace pto;\n\nvoid example() {\n  using SrcT = Tile<TileType::Vec, float, 16, 16>;\n  using DstT = Tile<TileType::Vec, float, 16, 1, BLayout::ColMajor>;\n  using TmpT = Tile<TileType::Vec, float, 16, 16>;\n  SrcT src;\n  DstT dst;\n  TmpT tmp;\n  TROWSUM(dst, src, tmp);\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal operand tuples, unsupported types, invalid layout combinations, or unsupported target-profile modes are rejected by the verifier or by the selected backend instruction set.\n    - Programs must not rely on behavior outside the documented legal domain.",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Reduce And Expand"
+  ],
+  "mnemonic": "TROWSUM",
+  "name": "pto.trowsum",
+  "operands": [
+    "src",
+    "tmp",
+    "dst"
+  ],
+  "outputs": [
+    "RecordEvent",
+    "dst"
+  ],
+  "sources": [
+    "docs/isa/tile/ops/reduce-and-expand/trowsum.md"
+  ],
+  "summary": "Reduce each row of a source tile by summing all elements in that row, producing a column vector of row sums.",
+  "syntax": "%dst = trowsum %src : !pto.tile<...> -> !pto.tile<...>",
+  "target_profile_restrictions": ""
+}

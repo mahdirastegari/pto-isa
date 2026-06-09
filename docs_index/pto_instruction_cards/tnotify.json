@@ -1,0 +1,22 @@
+{
+  "category": "11. Communication ISA Reference",
+  "constraints": "!!! warning \"Constraints\"\n    - **Type constraints**:\n        - `GlobalSignalData::DType` must be `int32_t` (32-bit signal).\n    - **Memory constraints**:\n        - `dstSignalData` must point to remote address (on target NPU).\n        - `dstSignalData` should be 4-byte aligned.\n    - **Operation semantics**:\n        - `NotifyOp::Set`: Direct store to remote memory.\n        - `NotifyOp::AtomicAdd`: Hardware atomic add using `st_atomic` instruction.",
+  "cpp_intrinsic": "template <typename GlobalSignalData, typename... WaitEvents>\nPTO_INST void NOTIFY(GlobalSignalData &dstSignalData, int32_t value, NotifyOp op, WaitEvents&... events);",
+  "examples": [
+    "#include <pto/comm/pto_comm_inst.hpp>\n\nusing namespace pto;\n\nvoid notify_set(__gm__ int32_t* remote_signal) {\n    comm::Signal sig(remote_signal);\n\n    // Set remote signal to 1\n    comm::NOTIFY(sig, 1, comm::NotifyOp::Set);\n}"
+  ],
+  "illegal_cases": "",
+  "instruction_set_path": [
+    "11. Communication ISA Reference"
+  ],
+  "mnemonic": "TNOTIFY",
+  "name": "pto.tnotify",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/comm/TNOTIFY.md"
+  ],
+  "summary": "Documented PTO instruction `pto.tnotify`.",
+  "syntax": "",
+  "target_profile_restrictions": ""
+}

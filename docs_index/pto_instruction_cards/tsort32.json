@@ -1,0 +1,23 @@
+{
+  "category": "Irregular And Complex",
+  "constraints": "!!! warning \"Constraints\"\n    - `TSORT32` does not take `WaitEvents&...` and does not call `TSYNC(...)` internally; synchronize explicitly if needed.\n\n    - `idx` is a required input operand in both overloads; it provides the indices that are permuted together with `src`.\n\n    - **Valid region**:\n        - The implementation uses `dst.GetValidRow()` as the row count.\n        - The implementation uses `src.GetValidCol()` to determine how many elements participate in sorting in each row.\n        - Sorting is performed independently per 32-element block; the 4-argument overload additionally supports non-32-aligned tails with `tmp`.",
+  "cpp_intrinsic": "template <typename DstTileData, typename SrcTileData, typename IdxTileData>\nPTO_INST RecordEvent TSORT32(DstTileData &dst, SrcTileData &src, IdxTileData &idx);\n\ntemplate <typename DstTileData, typename SrcTileData, typename IdxTileData, typename TmpTileData>\nPTO_INST RecordEvent TSORT32(DstTileData &dst, SrcTileData &src, IdxTileData &idx, TmpTileData &tmp);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\n\nusing namespace pto;\n\nvoid example_auto() {\n  using SrcT = Tile<TileType::Vec, float, 1, 32>;\n  using IdxT = Tile<TileType::Vec, uint32_t, 1, 32>;\n  using DstT = Tile<TileType::Vec, float, 1, 64>;\n  SrcT src;\n  IdxT idx;\n  DstT dst;\n  TSORT32(dst, src, idx);\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal operand tuples, unsupported types, invalid layout combinations, or unsupported target-profile modes are rejected by the verifier or by the selected backend instruction set.\n    - Programs must not rely on behavior outside the documented legal domain of this operation, even if one backend currently accepts it.",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Irregular And Complex"
+  ],
+  "mnemonic": "TSORT32",
+  "name": "pto.tsort32",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/tile/ops/irregular-and-complex/tsort32.md"
+  ],
+  "summary": "Sort a fixed-size 32-element block and produce an index mapping.",
+  "syntax": "%dst = tsort32 %src, %idx : !pto.tile<...>, !pto.tile<...> -> !pto.tile<...>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - **Implementation checks (A2A3/A5)**:\n        - `DstTileData::DType` must be `half` or `float`.\n        - `SrcTileData::DType` must match `DstTileData::DType`.\n        - `IdxTileData::DType` must be `uint32_t`.\n        - `dst/src/idx` tile location must be `TileType::Vec`, and all must be row-major (`isRowMajor`)."
+}

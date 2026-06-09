@@ -1,0 +1,26 @@
+{
+  "category": "Sync And Config",
+  "constraints": "!!! warning \"Constraints\"\n    - The exact mode values and downstream hardware behavior are target-defined.\n    - This instruction has control-state side effects and should be ordered appropriately relative to dependent compute instructions.\n    - Programs must not treat this operation as tile-payload transformation; it only changes mode state.",
+  "cpp_intrinsic": "template <bool isEnable, RoundMode hf32TransMode = RoundMode::CAST_ROUND, typename... WaitEvents>\nPTO_INST RecordEvent SETHF32MODE(WaitEvents &... events);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\nusing namespace pto;\n\nvoid example_enable_hf32() {\n  SETHF32MODE<true, RoundMode::CAST_ROUND>();\n}"
+  ],
+  "illegal_cases": "",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Sync And Config"
+  ],
+  "mnemonic": "SETHF32MODE",
+  "name": "pto.sethf32mode",
+  "operands": [
+    "enable",
+    "mode"
+  ],
+  "outputs": [],
+  "sources": [
+    "docs/isa/tile/ops/sync-and-config/sethf32mode.md"
+  ],
+  "summary": "Configure HF32 transform mode for supported matrix-multiplication and convolution paths.\n\nThis instruction controls backend-specific HF32 transformation behavior used by supported compute paths. It is part of the tile synchronization or configuration shell, so the visible effect is ordering or state setup rather than arithmetic payload transformation.\n\nNo direct tensor arithmetic is produced by this instruction. It updates target mode state used by subsequent instructions.",
+  "syntax": "pto.sethf32mode {enable = true, mode = ...}",
+  "target_profile_restrictions": ""
+}

@@ -1,0 +1,27 @@
+{
+  "category": "Binary Vector Instructions",
+  "constraints": "!!! warning \"Constraints\"\n    - Source and result element types MUST match.\n    - The A5 profile excludes `i8`/`u8` forms from this instruction set.\n    - `mask[i] == 0` lanes in the result are set to zero (zero-merge predication model).",
+  "cpp_intrinsic": "PTO_VMUL_IMPL(result, lhs, rhs, mask);",
+  "examples": [
+    "for (int i = 0; i < N; i++)\n    dst[i] = src0[i] * src1[i];"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - The verifier rejects illegal operand shapes, unsupported element types, and attribute combinations that are not valid for the selected instruction set or target profile.\n    - Any additional illegality stated in the constraints section is also part of the contract.",
+  "instruction_set_path": [
+    "9. Vector Instruction Reference",
+    "Binary Vector Instructions"
+  ],
+  "mnemonic": "VMUL",
+  "name": "pto.vmul",
+  "operands": [
+    "lhs",
+    "rhs",
+    "mask"
+  ],
+  "outputs": [],
+  "sources": [
+    "docs/isa/vector/ops/binary-vector-ops/vmul.md"
+  ],
+  "summary": "`%result` is the lane-wise product.",
+  "syntax": "vmul %dst, %lhs, %rhs, %mask : !pto.vreg<NxT>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - Documented A5 coverage: `i16-i32`, `f16`, `bf16`, `f32` (**NOT** `i8`/`u8`).\n    - A5 is the most detailed concrete profile in the current manual; CPU simulation and A2/A3-class targets may support narrower subsets or emulate the behavior while preserving the visible PTO contract.\n    - Code that depends on an instruction-set-specific type list, distribution mode, or fused form should treat that dependency as target-profile-specific unless the PTO manual states cross-target portability explicitly."
+}

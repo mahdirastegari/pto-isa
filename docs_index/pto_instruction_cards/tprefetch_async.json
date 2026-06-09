@@ -1,0 +1,23 @@
+{
+  "category": "Memory And Data Movement",
+  "constraints": "- Source data must be in Global Memory (GM/HBM address space).\n- For the GlobalTensor overload, the tensor must be flat contiguous (packed 1D layout).\n- The SDMA workspace must be initialized by host code before the kernel launch and passed into the kernel.\n- `PrefetchAsyncContext` owns a 256-byte UB scratch tile and an `AsyncSession` used while constructing and waiting on SDMA metadata.\n- SDMA CMO operates at cache-line granularity; non-aligned prefetch ranges are rounded by hardware.\n- On CPU simulation backend, this instruction is a no-op (returns an empty `AsyncEvent`).",
+  "cpp_intrinsic": "namespace pto {\n\ntemplate <typename GlobalData, typename... WaitEvents>\nPTO_INST comm::AsyncEvent TPREFETCH_ASYNC(GlobalData &src, PrefetchAsyncContext &ctx,\n                                          WaitEvents &... events);\n\n} // namespace pto",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\n\nusing namespace pto;\n\n__global__ AICORE void my_kernel(__gm__ half *src, __gm__ half *dst,\n                                 __gm__ uint8_t *workspace)\n{\n    using GShape = Shape<1, 1, 1, 1, 16384>;\n    using GStride = Stride<1, 1, 1, 1, 1>;\n    GlobalTensor<half, GShape, GStride> srcGlobal(src);\n\n    PrefetchAsyncContext ctx(workspace);\n    auto evt = TPREFETCH_ASYNC(srcGlobal, ctx);\n    evt.Wait(ctx.session);\n\n    using TileData = Tile<TileType::Vec, half, 128, 128, BLayout::RowMajor>;\n    TileData tile;\n    TASSIGN(tile, 0x100);\n    TLOAD(tile, srcGlobal);\n}"
+  ],
+  "illegal_cases": "",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Memory And Data Movement"
+  ],
+  "mnemonic": "TPREFETCH_ASYNC",
+  "name": "pto.tprefetch_async",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/tile/ops/memory-and-data-movement/tprefetch-async.md"
+  ],
+  "summary": "Documented PTO instruction `pto.tprefetch_async`.",
+  "syntax": "",
+  "target_profile_restrictions": ""
+}

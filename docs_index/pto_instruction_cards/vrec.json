@@ -1,0 +1,26 @@
+{
+  "category": "Unary Vector Instructions",
+  "constraints": "!!! warning \"Constraints\"\n    Only floating-point element types are legal.\n      Active inputs containing `+0` or `-0` follow the target's divide-style\n      exceptional behavior.",
+  "cpp_intrinsic": "",
+  "examples": [
+    "for (int i = 0; i < N; i++)\n    dst[i] = 1.0f / src[i];"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - The verifier rejects illegal operand shapes, unsupported element types, and attribute combinations that are not valid for the selected instruction set or target profile.\n    - Target-defined numeric exceptional behavior, such as divide-by-zero or out-of-domain inputs, remains subject to the selected backend profile unless this page narrows it further.\n    - Any additional illegality stated in the constraints section is also part of the contract.",
+  "instruction_set_path": [
+    "9. Vector Instruction Reference",
+    "Unary Vector Instructions"
+  ],
+  "mnemonic": "VREC",
+  "name": "pto.vrec",
+  "operands": [
+    "input",
+    "mask"
+  ],
+  "outputs": [],
+  "sources": [
+    "docs/isa/vector/ops/unary-vector-ops/vrec.md"
+  ],
+  "summary": "`%result` holds the reciprocal per active lane.",
+  "syntax": "vrec %result, %input, %mask",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - Documented A5 coverage: `f16, f32`.\n    - A5 is the most detailed concrete profile in the current manual; CPU simulation and A2/A3-class targets may support narrower subsets or emulate the behavior while preserving the visible PTO contract.\n    - Code that depends on an instruction-set-specific type list, distribution mode, or fused form should treat that dependency as target-profile-specific unless the PTO manual states cross-target portability explicitly."
+}

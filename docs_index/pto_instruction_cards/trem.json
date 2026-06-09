@@ -1,0 +1,29 @@
+{
+  "category": "Elementwise Tile Tile",
+  "constraints": "!!! warning \"Constraints\"\n    - **Division by Zero**:\n        - Behavior is target-defined; the CPU simulator asserts in debug builds.\n\n    - **Valid Region**:\n        - The op uses `dst.GetValidRow()` / `dst.GetValidCol()` as the iteration domain.",
+  "cpp_intrinsic": "template <auto PrecisionType = RemAlgorithm::DEFAULT, typename TileDataDst, typename TileDataSrc0,\n          typename TileDataSrc1, typename TileDataTmp, typename... WaitEvents>\nPTO_INST RecordEvent TREM(TileDataDst &dst, TileDataSrc0 &src0, TileDataSrc1 &src1, TileDataTmp &tmp, WaitEvents &... events);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\n\nusing namespace pto;\n\nvoid example() {\n  using TileT = Tile<TileType::Vec, float, 16, 16>;\n  using TmpT = Tile<TileType::Vec, float, 2, 16>;\n  TileT dst, src0, src1;\n  TmpT tmp;\n  TREM(dst, src0, src1, tmp);\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal operand tuples, unsupported types, invalid layout combinations, or unsupported target-profile modes are rejected by the verifier or by the selected backend instruction set.\n    - Programs must not rely on behavior outside the documented legal domain of this operation, even if one backend currently accepts it.",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Elementwise Tile Tile"
+  ],
+  "mnemonic": "TREM",
+  "name": "pto.trem",
+  "operands": [
+    "src0",
+    "src1",
+    "tmp"
+  ],
+  "outputs": [
+    "dst"
+  ],
+  "sources": [
+    "docs/isa/tile/ops/elementwise-tile-tile/trem.md"
+  ],
+  "summary": "Elementwise remainder of two tiles.",
+  "syntax": "%dst = trem %src0, %src1 : !pto.tile<...>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - **Implementation Checks (A2A3)**:\n        - `TileData::DType` must be one of: `float`, `float32_t`, `int32_t`.\n        - `dst`, `src0`, and `src1` must use the same element type.\n        - `dst`, `src0`, and `src1` must be row-major vector tiles.\n        - Runtime: `src0`, `src1`, and `dst` must have the same `validRow` and `validCol`.\n        - **tmp Buffer Requirements**:\n          - `tmp.GetValidCol() >= dst.GetValidCol()` (at least as many columns as dst)\n          - `tmp.GetValidRow() >= 2` (row 0 for intermediate results, row 1 for comparison mask storage)\n          - Data type must match `TileDataDst::DType`.\n\n    - **Implementation Checks (A5)**:\n        - `dst`, `src0`, and `src1` must use the same element type.\n        - Supported element types: `float`, `int32_t`, `uint32_t`, `half`, `int16_t`, and `uint16_t`.\n        - `dst`, `src0`, and `src1` must be vector tiles.\n        - Static valid bounds: `ValidRow <= Rows` and `ValidCol <= Cols` for all tiles.\n        - Runtime: `dst.GetValidRow() == src0.GetValidRow() == src1.GetValidRow()` and `dst.GetValidCol() == src0.GetValidCol() == src1.GetValidCol()`.\n        - Note: tmp parameter is accepted but not validated or used on A5.\n\n    - **For `int32_t` Inputs (A2A3 Only)**: Both `src0` and `src1` elements must be in the range `[-2^24, 2^24]` (i.e., `[-16777216, 16777216]`) to ensure exact conversion to float32 during computation.\n\n    - **High Precision Algorithm**: Only available on A5 for `float`; `PrecisionType` is ignored on A2A3."
+}

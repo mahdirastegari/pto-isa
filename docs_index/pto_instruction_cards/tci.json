@@ -1,0 +1,23 @@
+{
+  "category": "Irregular And Complex",
+  "constraints": "!!! warning \"Constraints\"\n    - **Valid region**:\n        - The implementation uses `dst.GetValidCol()` as the sequence length and does not consult `dst.GetValidRow()`.",
+  "cpp_intrinsic": "template <typename TileData, typename T, int descending, typename... WaitEvents>\nPTO_INST RecordEvent TCI(TileData &dst, T start, WaitEvents &... events);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\n\nusing namespace pto;\n\nvoid example_auto() {\n  using TileT = Tile<TileType::Vec, int32_t, 1, 16>;\n  TileT dst;\n  TCI<TileT, int32_t, /*descending=*/0>(dst, /*S=*/0);\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal operand tuples, unsupported types, invalid layout combinations, or unsupported target-profile modes are rejected by the verifier or by the selected backend instruction set.\n    - Programs must not rely on behavior outside the documented legal domain of this operation, even if one backend currently accepts it.",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Irregular And Complex"
+  ],
+  "mnemonic": "TCI",
+  "name": "pto.tci",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/tile/ops/irregular-and-complex/tci.md"
+  ],
+  "summary": "Generate a contiguous integer sequence into a destination tile.",
+  "syntax": "%dst = tci %S {descending = false} : !pto.tile<...>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - **Implementation checks (A2A3/A5)**:\n        - `TileData::DType` must be exactly the same type as the scalar template parameter `T`.\n        - `dst/scalar` element types must be identical, and must be one of: `int32_t`, `uint32_t`, `int16_t`, `uint16_t`.\n        - `TileData::Cols != 1` (this is the condition enforced by the implementation)."
+}

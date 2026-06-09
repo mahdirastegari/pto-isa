@@ -1,0 +1,23 @@
+{
+  "category": "Reduce And Expand",
+  "constraints": "!!! warning \"Constraints\"\n    - `TileDataDst::DType == TileDataSrc0::DType == TileDataSrc1::DType`\n\n    - `TileDataDst::DType`, `TileDataSrc0::DType`, `TileDataSrc1::DType` must be one of: `half`, `float`.\n\n    - Tile shape/layout constraint (compile-time): `TileDataDst::isRowMajor`.\n\n    - Mode 1: `src1` is expected to provide **one scalar per row** (i.e., its valid shape must cover `R` values).\n\n    - Mode 2: `src1` is expected to provide **32 bytes data per row**.\n\n    - Exact layout/fractal constraints are target-specific; see backend headers under `include/pto/npu/*/TRowExpand*.hpp`.",
+  "cpp_intrinsic": "template <typename TileDataDst, typename TileDataSrc0, typename TileDataSrc1, typename... WaitEvents>\nPTO_INST RecordEvent TROWEXPANDADD(TileDataDst &dst, TileDataSrc0 &src0, TileDataSrc1 &src1, WaitEvents &... events);\n\ntemplate <typename TileDataDst, typename TileDataSrc0, typename TileDataSrc1, typename TileDataTmp,\n          typename... WaitEvents>\nPTO_INST RecordEvent TROWEXPANDADD(TileDataDst &dst, TileDataSrc0 &src0, TileDataSrc1 &src1, TileDataTmp &tmp, WaitEvents &... events);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\n\nusing namespace pto;\n\nvoid example_auto() {\n  using SrcT = Tile<TileType::Vec, float, 16, 16>;\n  using DstT = Tile<TileType::Vec, float, 16, 16>;\n  using RowVecT = Tile<TileType::Vec, float, 16, 1, BLayout::ColMajor>;\n  SrcT src0;\n  DstT dst;\n  RowVecT src1;\n  // Row-expand-add: each row of dst = src0.row + src1.row_scalar\n  TROWEXPANDADD(dst, src0, src1);\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal operand tuples, unsupported types, invalid layout combinations, or unsupported target-profile modes are rejected by the verifier or by the selected backend instruction set.\n    - Programs must not rely on behavior outside the documented legal domain of this operation, even if one backend currently accepts it.",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Reduce And Expand"
+  ],
+  "mnemonic": "TROWEXPANDADD",
+  "name": "pto.trowexpandadd",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/tile/ops/reduce-and-expand/trowexpandadd.md"
+  ],
+  "summary": "Row-wise broadcast add: add a per-row scalar vector.",
+  "syntax": "%dst = trowexpandadd %src0, %src1 : !pto.tile<...>, !pto.tile<...> -> !pto.tile<...>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - `pto.trowexpandadd` preserves PTO-visible semantics across CPU simulation, A2/A3-class targets, and A5-class targets, but concrete support subsets may differ by profile.\n\n    - Portable code must rely only on the documented type, layout, shape, and mode combinations that the selected target profile guarantees."
+}

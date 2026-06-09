@@ -1,0 +1,26 @@
+{
+  "category": "Sync And Config",
+  "constraints": "!!! warning \"Constraints\"\n    - `TSYNC(events...)`: If no events are supplied, the call is a no-op.\n    - `TSYNC<Op>()`: Only valid for vector-pipeline operations. Attempting to use it for tile, matrix, or scalar operations is undefined.\n    - All events must be produced by operations that precede the `TSYNC` in program order.",
+  "cpp_intrinsic": "// Barrier for a single operation class\ntemplate <Op OpCode>\nPTO_INST void TSYNC();\n\n// Wait on one or more RecordEvent tokens\ntemplate <typename... WaitEvents>\nPTO_INST void TSYNC(WaitEvents &... events);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\nusing namespace pto;\n\nvoid example(__gm__ float* in) {\n  using TileT = Tile<TileType::Vec, float, 16, 16>;\n  using GShape = Shape<1, 1, 1, 16, 16>;\n  using GStride = BaseShape2D<float, 16, 16, Layout::ND>;\n  using GT = GlobalTensor<float, GShape, GStride, Layout::ND>;\n\n  GT gin(in);\n  TileT t;\n  RecordEvent e = TLOAD(t, gin);  // TLOAD returns RecordEvent\n  TSYNC(e);                        // wait for load to complete\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Supplying events that are not produced by any preceding operation causes undefined behavior.\n    - Using `TSYNC<Op>()` with an unsupported operation class is rejected by the verifier.",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Sync And Config"
+  ],
+  "mnemonic": "TSYNC",
+  "name": "pto.tsync",
+  "operands": [
+    "Form",
+    "Barrier"
+  ],
+  "outputs": [],
+  "sources": [
+    "docs/isa/tile/ops/sync-and-config/tsync.md"
+  ],
+  "summary": "Synchronize PTO execution. Two forms exist: the event-wait form blocks until specified event tokens are ready, and the barrier form inserts a pipeline drain for all operations of a given class.",
+  "syntax": "tsync %e0, %e1 : !pto.event<...>, !pto.event<...>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - CPU simulation: `TSYNC` emulates the ordering semantics but may not reflect hardware pipeline latency.\n    - A2/A3: `TSYNC<Op>()` only supports vector-pipeline ops.\n    - A5: same as A2/A3."
+}

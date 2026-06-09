@@ -1,0 +1,28 @@
+{
+  "category": "Elementwise Tile Tile",
+  "constraints": "!!! warning \"Constraints\"\n    - **Valid region**:\n        - The op uses `dst.GetValidRow()` / `dst.GetValidCol()` as the iteration domain.",
+  "cpp_intrinsic": "template <typename TileData, typename... WaitEvents>\nPTO_INST RecordEvent TAND(TileData &dst, TileData &src0, TileData &src1, WaitEvents &... events);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\n\nusing namespace pto;\n\nvoid example() {\n  using TileT = Tile<TileType::Vec, int32_t, 16, 16>;\n  TileT a, b, out;\n  TAND(out, a, b);\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal operand tuples, unsupported types, invalid layout combinations, or unsupported target-profile modes are rejected by the verifier or by the selected backend instruction set.\n    - Programs must not rely on behavior outside the documented legal domain of this operation, even if one backend currently accepts it.",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Elementwise Tile Tile"
+  ],
+  "mnemonic": "TAND",
+  "name": "pto.tand",
+  "operands": [
+    "src0",
+    "src1"
+  ],
+  "outputs": [
+    "dst"
+  ],
+  "sources": [
+    "docs/isa/tile/ops/elementwise-tile-tile/tand.md"
+  ],
+  "summary": "Elementwise bitwise AND of two tiles.",
+  "syntax": "%dst = tand %src0, %src1 : !pto.tile<...>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - **Implementation checks (A2A3)**:\n        - Supported element types are 1-byte or 2-byte integral types.\n        - `dst`, `src0`, and `src1` must use the same element type.\n        - `dst`, `src0`, and `src1` must be row-major.\n        - Runtime: `src0.GetValidRow()/GetValidCol()` and `src1.GetValidRow()/GetValidCol()` must match `dst`.\n\n    - **Implementation checks (A5)**:\n        - Supported element types are 1-byte, 2-byte, or 4-byte integral types.\n        - `dst`, `src0`, and `src1` must use the same element type.\n        - `dst`, `src0`, and `src1` must be row-major.\n        - Runtime: `src0.GetValidRow()/GetValidCol()` and `src1.GetValidRow()/GetValidCol()` must match `dst`."
+}

@@ -1,0 +1,28 @@
+{
+  "category": "Elementwise Tile Tile",
+  "constraints": "!!! warning \"Constraints\"\n    - **Valid region**:\n        - The op uses `dst.GetValidRow()` / `dst.GetValidCol()` as the iteration domain.\n\n    - **Domain / NaN**:\n        - Domain behavior (e.g., `log(<=0)`) is target-defined.",
+  "cpp_intrinsic": "template <auto PrecisionType = LogAlgorithm::DEFAULT, typename TileDataDst, typename TileDataSrc,\n          typename... WaitEvents>\nPTO_INST RecordEvent TLOG(TileDataDst &dst, TileDataSrc &src, WaitEvents &... events);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\n\nusing namespace pto;\n\nvoid example() {\n  using TileT = Tile<TileType::Vec, float, 16, 16>;\n  TileT x, out;\n  TLOG(out, x);\n  TLOG<LogAlgorithm::HIGH_PRECISION>(out, x);  // A5 only\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal operand tuples, unsupported types, invalid layout combinations, or unsupported target-profile modes are rejected by the verifier or by the selected backend instruction set.\n    - Programs must not rely on behavior outside the documented legal domain of this operation, even if one backend currently accepts it.",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Elementwise Tile Tile"
+  ],
+  "mnemonic": "TLOG",
+  "name": "pto.tlog",
+  "operands": [
+    "src",
+    "dst"
+  ],
+  "outputs": [
+    "dst"
+  ],
+  "sources": [
+    "docs/isa/tile/ops/elementwise-tile-tile/tlog.md"
+  ],
+  "summary": "Elementwise natural logarithm of a tile.",
+  "syntax": "%dst = tlog %src : !pto.tile<...>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - **Implementation checks (NPU)**:\n        - `TileData::DType` must be one of: `float` or `half`;\n        - Tile location must be vector (`TileData::Loc == TileType::Vec`);\n        - Static valid bounds: `TileData::ValidRow <= TileData::Rows` and `TileData::ValidCol <= TileData::Cols`;\n        - Runtime: `src.GetValidRow() == dst.GetValidRow()` and `src.GetValidCol() == dst.GetValidCol()`;\n        - Tile layout must be row-major (`TileData::isRowMajor`).\n\n    - **High precision algorithm**:\n        - Only available on A5. `PrecisionType` is ignored on A3."
+}

@@ -1,0 +1,30 @@
+{
+  "category": "Elementwise Tile Tile",
+  "constraints": "!!! warning \"Constraints\"\n    - The iteration domain is `dst.GetValidRow()` \u00d7 `dst.GetValidCol()`.\n    - `src0.GetValidRow()` and `src0.GetValidCol()` MUST match `dst`'s valid region.\n    - `src1`'s shape/validity is not verified by runtime assertions; out-of-region lanes read all-one-bits (0xFF) on A2/A3 and all-one-bits (0xFF) on A5 for source lanes outside their valid region.\n    - The output predicate tile uses a **packed encoding** (not one boolean per lane). Use `TSEL` with the predicate tile to apply it.",
+  "cpp_intrinsic": "template <typename TileDataDst, typename TileDataSrc, typename... WaitEvents>\nPTO_INST RecordEvent TCMP(TileDataDst &dst, TileDataSrc &src0, TileDataSrc &src1,\n                          CmpMode cmpMode, WaitEvents &... events);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\n\nusing namespace pto;\n\nvoid example_auto() {\n  using SrcT = Tile<TileType::Vec, float, 16, 16>;\n  using MaskT = Tile<TileType::Vec, uint8_t, 16, 32, BLayout::RowMajor, -1, -1>;\n  SrcT src0, src1;\n  MaskT mask(16, 2);\n  TCMP(mask, src0, src1, CmpMode::GT);\n}"
+  ],
+  "illegal_cases": "",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Elementwise Tile Tile"
+  ],
+  "mnemonic": "TCMP",
+  "name": "pto.tcmp",
+  "operands": [
+    "src0",
+    "src1",
+    "dst",
+    "cmpMode"
+  ],
+  "outputs": [
+    "dst"
+  ],
+  "sources": [
+    "docs/isa/tile/ops/elementwise-tile-tile/tcmp.md"
+  ],
+  "summary": "Compare two tiles element-wise and write a packed predicate mask tile.",
+  "syntax": "%dst = tcmp %src0, %src1 {cmpMode = #pto.cmp<EQ>} : !pto.tile<...>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    | Check | A2/A3 | A5 |\n    |-------|:-----:|:--:|\n    | Supported input types | `int32_t`, `half`, `float` | `uint32_t`, `int32_t`, `uint16_t`, `int16_t`, `uint8_t`, `int8_t`, `float`, `half` |\n    | Output predicate dtype | `uint8_t` | `uint32_t` |\n    | Tile location | `TileType::Vec` | `TileType::Vec` |\n    | Layout | Row-major | Row-major |\n    | Static valid bounds | Required | Required |\n    | `src0` valid == `dst` valid | Required | Required |\n    | `src1` validity | Not verified | Not verified |\n    | `int32_t` with non-EQ mode | Ignores `cmpMode`, uses EQ | Full support |"
+}

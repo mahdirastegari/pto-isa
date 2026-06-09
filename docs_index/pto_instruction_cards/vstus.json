@@ -1,0 +1,23 @@
+{
+  "category": "Vector Load Store",
+  "constraints": "!!! warning \"Constraints\"\n    This is the scalar-offset stateful form of the unaligned store instruction set. The\n      scalar offset width and update mode MUST match the selected form, and a later\n      flush op is still required.",
+  "cpp_intrinsic": "",
+  "examples": [
+    "%align_out, %base_out = pto.vstus %align_in, %offset, %value, %base, \"MODE\" : !pto.align, i32, !pto.vreg<NxT>, !pto.ptr<T, ub> -> !pto.align, !pto.ptr<T, ub>"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - It is illegal to use addresses outside the required UB-visible space or to violate the alignment/distribution contract of the selected form.\n    - Masked-off lanes or inactive blocks do not make an otherwise-illegal address valid unless the operation text explicitly says so.\n    - Any additional illegality stated in the constraints section is also part of the contract.",
+  "instruction_set_path": [
+    "9. Vector Instruction Reference",
+    "Vector Load Store"
+  ],
+  "mnemonic": "VSTUS",
+  "name": "pto.vstus",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/vector/ops/vector-load-store/vstus.md"
+  ],
+  "summary": "Unaligned store with scalar offset and state update.",
+  "syntax": "vstus %align_out, %base_out, %align_in, %offset, %value, %base, \"MODE\"",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - A5 is the most detailed concrete profile in the current manual; CPU simulation and A2/A3-class targets may support narrower subsets or emulate the behavior while preserving the visible PTO contract.\n    - Code that depends on an instruction-set-specific type list, distribution mode, or fused form should treat that dependency as target-profile-specific unless the PTO manual states cross-target portability explicitly."
+}

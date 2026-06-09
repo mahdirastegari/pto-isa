@@ -1,0 +1,27 @@
+{
+  "category": "Vector Load Store",
+  "constraints": "!!! warning \"Constraints\"\n    The effective address must satisfy the alignment requirement of the selected distribution mode. Each mode has specific alignment constraints documented below.\n\n    Inactive lanes (masked-off blocks) do not issue memory requests unless the operation explicitly documents otherwise.",
+  "cpp_intrinsic": "",
+  "examples": [
+    "%v = pto.vlds %ub[%offset] {dist = \"NORM\"} : !pto.ptr<f32, ub> -> !pto.vreg<64xf32>"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Using an address outside UB-visible space is illegal.\n    - Violating the alignment or distribution contract of the selected form is illegal.\n    - Masked-off lanes do not validate the address; an illegal address is still illegal even if no active lane touches it.",
+  "instruction_set_path": [
+    "9. Vector Instruction Reference",
+    "Vector Load Store"
+  ],
+  "mnemonic": "VLDS",
+  "name": "pto.vlds",
+  "operands": [
+    "source",
+    "offset",
+    "dist"
+  ],
+  "outputs": [],
+  "sources": [
+    "docs/isa/vector/ops/vector-load-store/vlds.md"
+  ],
+  "summary": "Load a vector register from the Unified Buffer (UB). The data layout within the vector is determined by the distribution mode attribute.",
+  "syntax": "vlds %result, %source[%offset] {dist = \"DIST\"}",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    A5 is the primary concrete profile for vector instructions. CPU simulation and A2/A3-class targets emulate the behavior while preserving the PTO contract, but may support narrower subsets.\n\n    Code that depends on a specific distribution mode list or timing should treat that dependency as target-profile-specific."
+}

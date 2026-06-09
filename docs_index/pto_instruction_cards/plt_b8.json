@@ -1,0 +1,29 @@
+{
+  "category": "Predicate Generation And Algebra",
+  "constraints": "!!! warning \"Constraints\"\n    - The installed public CCE surface for `plt_b8` uses a `uint32_t &` scalar plus `__cce_simd::POST_UPDATE`.\n    - Programs that chain multiple `plt_b8` calls must thread the updated scalar value forward explicitly.\n    - The returned predicate width is fixed by the `_b8` suffix.",
+  "cpp_intrinsic": "uint32_t scalar = elementCount;\nvector_bool mask = plt_b8(scalar, __cce_simd::POST_UPDATE);",
+  "examples": [
+    "uint32_t scalar = elementCount;\nvector_bool mask = plt_b8(scalar, __cce_simd::POST_UPDATE);"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal if the selected target profile does not support the requested predicate width.\n    - Illegal if the post-update scalar state is consumed in a way that breaks the required chaining discipline.",
+  "instruction_set_path": [
+    "10. Scalar And Control Reference",
+    "Predicate Generation And Algebra"
+  ],
+  "mnemonic": "PLT_B8",
+  "name": "pto.plt_b8",
+  "operands": [
+    "scalar_in",
+    "post_update"
+  ],
+  "outputs": [
+    "mask",
+    "scalar_out"
+  ],
+  "sources": [
+    "docs/isa/scalar/ops/predicate-generation-and-algebra/plt-b8.md"
+  ],
+  "summary": "Generate a 8-bit tail predicate from a runtime element count and update the scalar through a post-update reference.",
+  "syntax": "%mask, %scalar_out = pto.plt_b8 %scalar_in {post_update} : i32 -> !pto.mask<b8>, i32",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    | Aspect | CPU Sim | A2/A3 | A5 |\n    |--------|:-------:|:------:|:--:|\n    | Tail-predicate helper | Simulated | Supported | Supported |\n    | Public post-update scalar form | Emulated | Supported | Supported |"
+}

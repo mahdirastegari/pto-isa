@@ -1,0 +1,28 @@
+{
+  "category": "SFU And DSA Instructions",
+  "constraints": "!!! warning \"Constraints\"\n    - `%dest`, `%src`, and `%indices` MUST all refer to UB-backed storage.\n    - The hardware operation processes 32-element groups; `%repeat_times` scales that fixed group size.\n    - The page-level contract assumes descending score order.\n    - Buffer alignment and layout MUST satisfy the target-profile backend contract for the selected form.",
+  "cpp_intrinsic": "__ubuf__ float *dst;\n__ubuf__ float *scores;\n__ubuf__ unsigned int *indices;\nuint8_t repeat = 1;\nvbitsort(dst, scores, indices, repeat);",
+  "examples": [
+    "pto.vbitsort %sorted_records, %score_buf, %idx_buf, %c1\n    : (!pto.ptr<f32, ub>, !pto.ptr<f32, ub>, !pto.ptr<i32, ub>, index) -> ()"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - The verifier rejects illegal pointer spaces or unsupported element types.\n    - Illegal repeat counts or malformed buffer contracts are target-profile-specific errors.",
+  "instruction_set_path": [
+    "9. Vector Instruction Reference",
+    "SFU And DSA Instructions"
+  ],
+  "mnemonic": "VBITSORT",
+  "name": "pto.vbitsort",
+  "operands": [
+    "dest",
+    "src",
+    "indices",
+    "repeat_times"
+  ],
+  "outputs": [],
+  "sources": [
+    "docs/isa/vector/ops/sfu-and-dsa-ops/vbitsort.md"
+  ],
+  "summary": "Sort 32 score/index pairs in descending score order and materialize the sorted records into UB.",
+  "syntax": "pto.vbitsort %dest, %src, %indices, %repeat_times : (!pto.ptr<T, ub>, !pto.ptr<T, ub>, !pto.ptr<i32, ub>, index) -> ()",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - This operation is documented as A5-oriented sort acceleration.\n    - CPU simulation may preserve the visible PTO contract with a software fallback.\n    - Availability on narrower profiles is target-specific and should not be assumed without profile documentation."
+}

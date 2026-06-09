@@ -1,0 +1,28 @@
+{
+  "category": "Elementwise Tile Tile",
+  "constraints": "!!! warning \"Constraints\"\n    - **Type match**: All three tiles (`src0`, `src1`, `dst`) MUST have identical element types.\n    - **Layout**: Both source tiles and the destination tile MUST have compatible layouts. See the TileType\u2013Layout compatibility table in [Tiles and Valid Regions](../../../programming-model/tiles-and-valid-regions.md).\n    - **Valid region**: The iteration domain is `dst.GetValidRow()` \u00d7 `dst.GetValidCol()`. Source tiles with smaller valid regions read all-one-bits (0xFF) on A2/A3 and all-one-bits (0xFF) on A5 for lanes outside their valid region.\n    - **TileType**: The destination tile's TileType determines which pipelines execute the operation. See [Tiles and Valid Regions](../../../programming-model/tiles-and-valid-regions.md) for TileType constraints.",
+  "cpp_intrinsic": "template <typename TileDataDst, typename TileDataSrc0, typename TileDataSrc1, typename... WaitEvents>\nPTO_INST RecordEvent TADD(TileDataDst& dst, TileDataSrc0& src0, TileDataSrc1& src1, WaitEvents&... events);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\nusing namespace pto;\n\nvoid add_tiles(Tile<Vec, float, 16, 16>& dst,\n               Tile<Vec, float, 16, 16>& src0,\n               Tile<Vec, float, 16, 16>& src1) {\n    // Compiler inserts TASSIGN and TSYNC automatically in Auto mode.\n    TADD(dst, src0, src1);\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Verifier rejects type mismatches between source and destination tiles.\n    - Backend rejects unsupported element types, layouts, or shapes for the selected target profile.\n    - Programs that read values from destination lanes outside `dst`'s declared valid region observe undefined behavior.",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Elementwise Tile Tile"
+  ],
+  "mnemonic": "TADD",
+  "name": "pto.tadd",
+  "operands": [
+    "src0",
+    "src1"
+  ],
+  "outputs": [
+    "dst"
+  ],
+  "sources": [
+    "docs/isa/tile/ops/elementwise-tile-tile/tadd.md"
+  ],
+  "summary": "Lane-wise addition of two source tiles into a destination tile. The iteration domain is the destination tile's valid region.",
+  "syntax": "%dst = tadd %src0, %src1 : !pto.tile<...>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    | | CPU Simulator | A2/A3 | A5 |\n    |-|--------------|-------|-----|\n    | `f32` | Simulated | Supported | Supported |\n    | `f16` | Simulated | Supported | Supported |\n    | `bf16` | Simulated | Supported | Supported |\n    | `i32` | Simulated | Supported | Supported |\n    | `i16` | Simulated | Supported | Supported |\n    | `i8` / `u8` | Simulated | No | Supported |\n    | `i64` / `u64` | Simulated | No | No |\n    | `f8e4m3` / `f8e5m2` | Simulated | No | Supported |\n    | Layout | Any | RowMajor only | RowMajor only |\n\n    A2/A3 requires `isRowMajor == true` for all operands. A5 additionally requires `isRowMajor == true` but supports more element types."
+}

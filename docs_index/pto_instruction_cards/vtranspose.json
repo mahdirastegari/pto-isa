@@ -1,0 +1,23 @@
+{
+  "category": "SFU And DSA Instructions",
+  "constraints": "!!! warning \"Constraints\"\n    This is not a `vreg -> vreg` op even though\n      it lives in the `pto.v*` namespace. Its correctness depends on the control\n      word and UB layout contract.",
+  "cpp_intrinsic": "",
+  "examples": [
+    "pto.vtranspose %dest, %src, %config : !pto.ptr<T, ub>, !pto.ptr<T, ub>, i64"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - The verifier rejects illegal operand shapes, unsupported element types, and attribute combinations that are not valid for the selected instruction set or target profile.\n    - Any additional illegality stated in the constraints section is also part of the contract.",
+  "instruction_set_path": [
+    "9. Vector Instruction Reference",
+    "SFU And DSA Instructions"
+  ],
+  "mnemonic": "VTRANSPOSE",
+  "name": "pto.vtranspose",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/vector/ops/sfu-and-dsa-ops/vtranspose.md"
+  ],
+  "summary": "UB-to-UB transpose operation (not vreg-to-vreg).",
+  "syntax": "vtranspose %dest, %src, %config",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - A5 is the most detailed concrete profile in the current manual; CPU simulation and A2/A3-class targets may support narrower subsets or emulate the behavior while preserving the visible PTO contract.\n    - Code that depends on an instruction-set-specific type list, distribution mode, or fused form should treat that dependency as target-profile-specific unless the PTO manual states cross-target portability explicitly."
+}

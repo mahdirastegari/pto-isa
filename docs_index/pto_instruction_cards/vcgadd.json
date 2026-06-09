@@ -1,0 +1,26 @@
+{
+  "category": "Reduction Instructions",
+  "constraints": "!!! warning \"Constraints\"\n    - **VLane granularity**: Reduction operates within 32-byte VLane groups; results are written to lane 0 of each group.\n    - **Inactive lanes**: Inactive lanes are treated as zero.\n    - **All lanes inactive in a group**: If all predicate bits are zero within a group, that group's lane 0 result is zero.\n    - **Type support**: Only `i16-i32`, `f16`, `f32` are supported on A5.",
+  "cpp_intrinsic": "",
+  "examples": [
+    "int K = N / 8;  // elements per VLane group (8 for f32)\nfor (int g = 0; g < 8; g++) {\n    T sum = 0;\n    for (int i = 0; i < K; i++)\n        sum += src[g*K + i];\n    dst[g*K] = sum;\n    for (int i = 1; i < K; i++)\n        dst[g*K + i] = 0;\n}\n// For f32 128-element vector: results at dst[0], dst[8], dst[16], dst[24],\n// dst[32], dst[40], dst[48], dst[56], dst[64], dst[72], dst[80], dst[88],\n// dst[96], dst[104], dst[112], dst[120]"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - The verifier rejects illegal operand shapes, unsupported element types, and attribute combinations that are not valid for the selected instruction set or target profile.\n    - Any additional illegality stated in the constraints section is also part of the contract.",
+  "instruction_set_path": [
+    "9. Vector Instruction Reference",
+    "Reduction Instructions"
+  ],
+  "mnemonic": "VCGADD",
+  "name": "pto.vcgadd",
+  "operands": [
+    "input",
+    "mask"
+  ],
+  "outputs": [],
+  "sources": [
+    "docs/isa/vector/ops/reduction-ops/vcgadd.md"
+  ],
+  "summary": "Lane-group reduction that sums within each 32-byte VLane group, writing one result per group to its lane-0 position and zeroing all other lanes in each group.",
+  "syntax": "vcgadd %dst, %src, %mask : !pto.vreg<NxT>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - Documented A5 coverage: `i16-i32`, `f16`, `f32`.\n    - A5 is the most detailed concrete profile in the current manual; CPU simulation and A2/A3-class targets may support narrower subsets or emulate the behavior while preserving the visible PTO contract.\n    - Code that depends on an instruction-set-specific type list, distribution mode, or fused form should treat that dependency as target-profile-specific unless the PTO manual states cross-target portability explicitly."
+}

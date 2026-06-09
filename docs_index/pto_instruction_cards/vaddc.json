@@ -1,0 +1,29 @@
+{
+  "category": "Binary Vector Instructions",
+  "constraints": "!!! warning \"Constraints\"\n    - **Type**: Integer element types only. This is a carry-chain integer addition instruction set.\n    - **Signedness**: On A5, treat as unsigned integer operation.\n    - **Type match**: `%lhs`, `%rhs`, and `%result` MUST have identical element types.\n    - **Width match**: All registers MUST have the same vector width `N`.\n    - **Mask width**: `%mask` MUST have width equal to `N`.\n    - **Active lanes**: Only lanes where the mask bit is 1 participate.\n    - **Inactive lanes**: Destination and carry elements at inactive lanes are unmodified.",
+  "cpp_intrinsic": "",
+  "examples": [
+    "for (int i = 0; i < N; i++) {\n    uint64_t r = (uint64_t)src0[i] + src1[i];\n    dst[i] = (T)r;\n    carry[i] = (r >> bitwidth);\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - The verifier rejects non-integer element types, type mismatches, width mismatches, or mask width mismatches.\n    - Any additional illegality stated in the [Binary Vector Instructions](../../binary-vector-ops.md) instruction set page is also part of the contract.",
+  "instruction_set_path": [
+    "9. Vector Instruction Reference",
+    "Binary Vector Instructions"
+  ],
+  "mnemonic": "VADDC",
+  "name": "pto.vaddc",
+  "operands": [
+    "lhs",
+    "rhs",
+    "mask"
+  ],
+  "outputs": [
+    "carry"
+  ],
+  "sources": [
+    "docs/isa/vector/ops/binary-vector-ops/vaddc.md"
+  ],
+  "summary": "Lane-wise integer addition producing both a result vector and a carry/overflow predicate mask vector.",
+  "syntax": "vaddc %dst, %carry, %lhs, %rhs, %mask : !pto.vreg<NxT>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    A5 is the primary concrete profile for the vector instructions. CPU simulation and A2/A3-class targets emulate this operation while preserving the visible PTO contract."
+}

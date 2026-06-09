@@ -1,0 +1,23 @@
+{
+  "category": "Vector Load Store",
+  "constraints": "!!! warning \"Constraints\"\n    `%offset` is not a plain byte displacement; it encodes the block stride and\n      repeat pattern. If a block is masked off, the corresponding destination block\n      is zeroed and MUST NOT raise an address overflow exception for that block.",
+  "cpp_intrinsic": "",
+  "examples": [
+    "%result = pto.vsldb %source, %offset, %mask : !pto.ptr<T, ub>, i32, !pto.mask<G> -> !pto.vreg<NxT>"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - It is illegal to use addresses outside the required UB-visible space or to violate the alignment/distribution contract of the selected form.\n    - Masked-off lanes or inactive blocks do not make an otherwise-illegal address valid unless the operation text explicitly says so.\n    - Any additional illegality stated in the constraints section is also part of the contract.",
+  "instruction_set_path": [
+    "9. Vector Instruction Reference",
+    "Vector Load Store"
+  ],
+  "mnemonic": "VSLDB",
+  "name": "pto.vsldb",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/vector/ops/vector-load-store/vsldb.md"
+  ],
+  "summary": "Block-strided load for 2D tile access.",
+  "syntax": "vsldb %result, %source, %offset, %mask",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - A5 is the most detailed concrete profile in the current manual; CPU simulation and A2/A3-class targets may support narrower subsets or emulate the behavior while preserving the visible PTO contract.\n    - Code that depends on an instruction-set-specific type list, distribution mode, or fused form should treat that dependency as target-profile-specific unless the PTO manual states cross-target portability explicitly."
+}

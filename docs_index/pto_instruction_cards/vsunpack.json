@@ -1,0 +1,26 @@
+{
+  "category": "Data Rearrangement",
+  "constraints": "!!! warning \"Constraints\"\n    - The selected half and widening mode MUST be supported by the target profile.\n    - The widening behavior is sign-extending.",
+  "cpp_intrinsic": "",
+  "examples": [
+    "for (int i = 0; i < N/2; i++)\n    dst[i] = sign_extend(src[part_offset + i]);"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - The verifier rejects illegal operand shapes, unsupported element types, and attribute combinations that are not valid for the selected instruction set or target profile.\n    - Any additional illegality stated in the constraints section is also part of the contract.",
+  "instruction_set_path": [
+    "9. Vector Instruction Reference",
+    "Data Rearrangement"
+  ],
+  "mnemonic": "VSUNPACK",
+  "name": "pto.vsunpack",
+  "operands": [
+    "src",
+    "part"
+  ],
+  "outputs": [],
+  "sources": [
+    "docs/isa/vector/ops/data-rearrangement/vsunpack.md"
+  ],
+  "summary": "Unpack one half of a narrow vector with sign extension.",
+  "syntax": "vsunpack %dst, %src, %part",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - A5 is the most detailed concrete profile in the current manual; CPU simulation and A2/A3-class targets may support narrower subsets or emulate the behavior while preserving the visible PTO contract.\n    - Code that depends on an instruction-set-specific packing, selector, or permutation mode should treat that dependency as target-profile-specific unless the manual states cross-target portability explicitly."
+}

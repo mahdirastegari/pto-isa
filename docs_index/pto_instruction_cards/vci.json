@@ -1,0 +1,28 @@
+{
+  "category": "Conversion Ops",
+  "constraints": "!!! warning \"Constraints\"\n    - `%result` uses an integer element type (`i32` in the common form).\n    - The scalar `%index` type matches the result element type.\n    - The `order` attribute is required when using sorted index generation.\n    - For the standard form, `N` (lane count) is derived from the result type.",
+  "cpp_intrinsic": "",
+  "examples": [
+    "%indices = pto.vci %c0 {order = \"ASC\"} : i32 -> !pto.vreg<64xi32>\n// Result: [0, 1, 2, 3, ..., 63]"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - The verifier rejects illegal operand shapes, unsupported element types, and attribute combinations that are not valid for the selected instruction set or target profile.\n    - Illegal `order` values are rejected by the verifier.",
+  "instruction_set_path": [
+    "9. Vector Instruction Reference",
+    "Conversion Ops"
+  ],
+  "mnemonic": "VCI",
+  "name": "pto.vci",
+  "operands": [
+    "index",
+    "mask",
+    "Attribute",
+    "order"
+  ],
+  "outputs": [],
+  "sources": [
+    "docs/isa/vector/ops/conversion-ops/vci.md"
+  ],
+  "summary": "Standalone contract page for `pto.vci`.",
+  "syntax": "vci %index, %mask {order = \"ORDER\"} : !pto.vreg<Nxi32> -> !pto.vreg<Nxi32>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - A5 is the most detailed concrete profile in the current manual; CPU simulation and A2/A3-class targets may support narrower subsets or emulate the behavior while preserving the visible PTO contract.\n    - Under the current documented A5 profile contract, `pto.vci` maps to hardware trace with no vector `RV_*` in sampled `veccore0` trace."
+}

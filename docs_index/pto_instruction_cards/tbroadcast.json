@@ -1,0 +1,22 @@
+{
+  "category": "11. Communication ISA Reference",
+  "constraints": "- **Type constraints**:\n    - `ParallelGroup::value_type::RawDType` must equal `GlobalSrcData::RawDType`.\n    - `TileData::DType` must equal `GlobalSrcData::RawDType`.\n- **Memory constraints**:\n    - `srcGlobalData` must point to local memory (current NPU).\n    - `stagingTileData` (or `pingTile` / `pongTile`) must be pre-allocated in UB.\n- **ParallelGroup constraints**:\n    - `parallelGroup.tensors[k]` must refer to rank `k`'s destination buffer (remote GM as seen by the root).\n    - `parallelGroup.GetRootIdx()` identifies the calling NPU as the broadcast root.\n    - All destination tensors are assumed to have the same shape and strides.\n- **Chunked mode constraints** (when data exceeds a single UB tile):\n    - If `TileData` has static `ValidRow`, `GetShape(DIM_3)` must be divisible by `ValidRow`. Use a Tile with `DYNAMIC` ValidRow for partial row support.\n    - If `TileData` has static `ValidCol`, `GetShape(DIM_4)` must be divisible by `ValidCol`. Use a Tile with `DYNAMIC` ValidCol for partial column support.\n\n> **CCU path**: Unlike the AIV path where only root calls `TBROADCAST`, the CCU path requires all ranks to register and launch the CCU kernel via host-side `HcclCcuKernelRegister` / `HcclCcuKernelLaunch`. See `tests/npu/a5/comm/st/testcase/tbroadcast_ccu/` for a complete example.",
+  "cpp_intrinsic": "// Basic broadcast (single staging tile)\ntemplate <CollEngine engine = CollEngine::AIV,\n          typename ParallelGroupType, typename GlobalSrcData, typename TileData, typename... Args>\nPTO_INST RecordEvent TBROADCAST(ParallelGroupType &parallelGroup, GlobalSrcData &srcGlobalData,\n                                TileData &stagingTileData, Args&... args);\n\n// Ping-pong broadcast (double buffering with two staging tiles)\ntemplate <CollEngine engine = CollEngine::AIV,\n          typename ParallelGroupType, typename GlobalSrcData, typename TileData, typename... Args>\nPTO_INST RecordEvent TBROADCAST(ParallelGroupType &parallelGroup, GlobalSrcData &srcGlobalData,\n                                TileData &pingTile, TileData &pongTile, Args&... args);",
+  "examples": [
+    "#include <pto/comm/pto_comm_inst.hpp>\n\nusing namespace pto;\n\ntemplate <typename T, int ROWS, int COLS, int TILE_ROWS, int TILE_COLS, int NRANKS>\nvoid broadcast(__gm__ T* group_addrs[NRANKS], __gm__ T* my_data, int my_rank) {\n    // Tile dimensions can differ from tensor dimensions.\n    // The 2D sliding chunked path automatically tiles both row and column.\n    using TileT = Tile<TileType::Vec, T, TILE_ROWS, TILE_COLS, BLayout::RowMajor, -1, -1>;\n    using GTensor = GlobalTensor<T, Shape<1,1,1,ROWS,COLS>,\n                                 BaseShape2D<T, ROWS, COLS, Layout::ND>, Layout::ND>;\n\n    GTensor tensors[NRANKS];\n    for (int i = 0; i < NRANKS; ++i) {\n        tensors[i] = GTensor(group_addrs[i]);\n    }\n\n    comm::ParallelGroup<GTensor> group(tensors, NRANKS, my_rank);\n    GTensor srcG(my_data);\n    TileT stagingTile(TILE_ROWS, TILE_COLS);\n\n    // Current NPU broadcasts its data to all others\n    comm::TBROADCAST(group, srcG, stagingTile);\n}"
+  ],
+  "illegal_cases": "",
+  "instruction_set_path": [
+    "11. Communication ISA Reference"
+  ],
+  "mnemonic": "TBROADCAST",
+  "name": "pto.tbroadcast",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/comm/TBROADCAST.md"
+  ],
+  "summary": "Documented PTO instruction `pto.tbroadcast`.",
+  "syntax": "",
+  "target_profile_restrictions": ""
+}

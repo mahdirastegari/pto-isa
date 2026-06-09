@@ -1,0 +1,29 @@
+{
+  "category": "Elementwise Tile Tile",
+  "constraints": "!!! warning \"Constraints\"\n    - The op iterates over `dst.GetValidRow()` / `dst.GetValidCol()`.",
+  "cpp_intrinsic": "template <typename TileData, typename... WaitEvents>\nPTO_INST RecordEvent TSUBC(TileData &dst, TileData &src0, TileData &src1, TileData &src2, WaitEvents &... events);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\n\nusing namespace pto;\n\nvoid example() {\n  using TileT = Tile<TileType::Vec, float, 16, 16>;\n  TileT a, b, c, out;\n  TSUBC(out, a, b, c);\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal operand tuples, unsupported types, invalid layout combinations, or unsupported target-profile modes are rejected by the verifier or by the selected backend instruction set.\n    - Programs must not rely on behavior outside the documented legal domain of this operation, even if one backend currently accepts it.",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Elementwise Tile Tile"
+  ],
+  "mnemonic": "TSUBC",
+  "name": "pto.tsubc",
+  "operands": [
+    "src0",
+    "src1",
+    "src2"
+  ],
+  "outputs": [
+    "dst"
+  ],
+  "sources": [
+    "docs/isa/tile/ops/elementwise-tile-tile/tsubc.md"
+  ],
+  "summary": "Elementwise ternary op: `src0 - src1 + src2`.",
+  "syntax": "%dst = tsubc %src0, %src1, %src2 : !pto.tile<...>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - `pto.tsubc` preserves PTO-visible semantics across CPU simulation, A2/A3-class targets, and A5-class targets, but concrete support subsets may differ by profile.\n\n    - Portable code must rely only on the documented type, layout, shape, and mode combinations that the selected target profile guarantees."
+}

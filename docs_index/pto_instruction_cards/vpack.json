@@ -1,0 +1,27 @@
+{
+  "category": "Data Rearrangement",
+  "constraints": "!!! warning \"Constraints\"\n    - Packing is a narrowing conversion; values that do not fit the destination width follow the truncation or saturation behavior of the selected form.\n    - Lowering MUST preserve the destination ordering between the first and second source halves.",
+  "cpp_intrinsic": "",
+  "examples": [
+    "for (int i = 0; i < N; i++) {\n    dst[i] = truncate(src0[i]);\n    dst[N + i] = truncate(src1[i]);\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - The verifier rejects illegal operand shapes, unsupported element types, and attribute combinations that are not valid for the selected instruction set or target profile.\n    - Any additional illegality stated in the constraints section is also part of the contract.",
+  "instruction_set_path": [
+    "9. Vector Instruction Reference",
+    "Data Rearrangement"
+  ],
+  "mnemonic": "VPACK",
+  "name": "pto.vpack",
+  "operands": [
+    "src0",
+    "src1",
+    "part"
+  ],
+  "outputs": [],
+  "sources": [
+    "docs/isa/vector/ops/data-rearrangement/vpack.md"
+  ],
+  "summary": "Pack two wide vectors into one narrower vector.",
+  "syntax": "vpack %dst, %src0, %src1, %part",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - A5 is the most detailed concrete profile in the current manual; CPU simulation and A2/A3-class targets may support narrower subsets or emulate the behavior while preserving the visible PTO contract.\n    - Code that depends on an instruction-set-specific packing, selector, or permutation mode should treat that dependency as target-profile-specific unless the manual states cross-target portability explicitly."
+}

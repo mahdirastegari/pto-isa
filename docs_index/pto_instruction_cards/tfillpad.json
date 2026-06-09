@@ -1,0 +1,23 @@
+{
+  "category": "Layout And Rearrangement",
+  "constraints": "!!! warning \"Constraints\"\n    - `TileDataDst::PadVal != PadValue::Null`.\n\n    - `sizeof(TileDataDst::DType) == sizeof(TileDataSrc::DType)` and element size must be `1`, `2`, or `4` bytes.\n\n    - `TFILLPAD`: `TileDataDst::Rows/Cols` must match `TileDataSrc::Rows/Cols`.\n\n    - `TFILLPAD_EXPAND`: `TileDataDst::Rows >= TileDataSrc::Rows` and `TileDataDst::Cols >= TileDataSrc::Cols`.\n\n    - `TFILLPAD(TileData &dst, TileData &src)`:`if TileData::TileType is Mat, layout only support (!TileData::isRowMajor && TileData::Slayout::RowMajor), and PadVal only support PadValue::Zero`",
+  "cpp_intrinsic": "template <typename TileData, PadValue PadVal = PadValue::Zero, typename... WaitEvents>\nPTO_INST RecordEvent TFILLPAD(TileData &dst, TileData &src, WaitEvents &... events);\n\ntemplate <typename DstTileData, typename SrcTileData, typename... WaitEvents>\nPTO_INST RecordEvent TFILLPAD(DstTileData &dst, SrcTileData &src, WaitEvents &... events);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\n\nusing namespace pto;\n\nvoid example1() {\n  using SrcT = Tile<TileType::Vec, float, 16, 16>;\n  using DstT = Tile<TileType::Vec, float, 16, 16, BLayout::RowMajor, 16, 16, SLayout::NoneBox, TileConfig::fractalABSize, PadValue::Min>;\n\n  SrcT src;\n  DstT dst;\n  TFILLPAD(dst, src);\n}\n\nvoid example2() {\n  using TileMatData = Tile<TileType::Mat, float, 16, 256, BLayout::ColMajor, 1, 224, SLayout::RowMajor, 512>;\n\n  TileMatData matTile;\n  TFILLPAD(matTile, matTile);\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal operand tuples, unsupported types, invalid layout combinations, or unsupported target-profile modes are rejected by the verifier or by the selected backend instruction set.\n    - Programs must not rely on behavior outside the documented legal domain of this operation, even if one backend currently accepts it.",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Layout And Rearrangement"
+  ],
+  "mnemonic": "TFILLPAD",
+  "name": "pto.tfillpad",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/tile/ops/layout-and-rearrangement/tfillpad.md"
+  ],
+  "summary": "Copy+pad a tile outside the valid region with a compile-time pad value.",
+  "syntax": "%dst = tfillpad %src : !pto.tile<...> -> !pto.tile<...>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - `pto.tfillpad` preserves PTO-visible semantics across CPU simulation, A2/A3-class targets, and A5-class targets, but concrete support subsets may differ by profile.\n\n    - Portable code must rely only on the documented type, layout, shape, and mode combinations that the selected target profile guarantees."
+}

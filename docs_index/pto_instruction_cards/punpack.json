@@ -1,0 +1,27 @@
+{
+  "category": "Predicate Generation And Algebra",
+  "constraints": "!!! warning \"Constraints\"\n    - **Partition token**: MUST be `\"LOWER\"` or `\"HIGHER\"`. Other tokens are **illegal**.\n    - **Source width**: The source predicate MUST be 2N bits. Programs MUST ensure the source context provides a 2N-bit predicate.\n    - **Destination width**: The destination predicate is always N bits. Programs that need a 2N-bit result after extraction MUST use `ppack` to reconstruct it.\n    - **Zero-fill behavior**: The non-selected half of the source is ignored (zero-filled); the destination does NOT contain a concatenation or merge of both halves.",
+  "cpp_intrinsic": "vector_bool dst;\nvector_bool src;\npunpack(dst, src, __cce_simd::LOWER);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\nusing namespace pto;\n\nvoid extract_upper(RegBuf<predicate_t>& dst,\n                   const RegBuf<predicate_t>& src_64) {\n    PUNPACK(dst, src_64, \"HIGHER\");\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal if the partition token is not `\"LOWER\"` or `\"HIGHER\"`.\n    - Illegal if source and destination predicate widths are not in a 2:1 ratio.",
+  "instruction_set_path": [
+    "10. Scalar And Control Reference",
+    "Predicate Generation And Algebra"
+  ],
+  "mnemonic": "PUNPACK",
+  "name": "pto.punpack",
+  "operands": [
+    "src"
+  ],
+  "outputs": [
+    "dst"
+  ],
+  "sources": [
+    "docs/isa/scalar/ops/predicate-generation-and-algebra/punpack.md"
+  ],
+  "summary": "Widening unpack: extract one N-bit segment from a 2N-bit predicate register, zero-filling the non-selected half of the source.",
+  "syntax": "%dst = pto.punpack %src, \"PART\" : !pto.mask<G> -> !pto.mask<G>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    | Aspect | CPU Sim | A2/A3 | A5 |\n    |--------|:-------:|:------:|:--:|\n    | Unpack operation | Simulated | Supported | Supported |\n    | `LOWER` / `HIGHER` tokens | Supported | Supported | Supported |"
+}

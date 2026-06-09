@@ -1,0 +1,23 @@
+{
+  "category": "Layout And Rearrangement",
+  "constraints": "### General Constraints / Checks\n\n- `TCONCAT` has three overload variants:\n    - Basic form: `TCONCAT(dst, src0, src1)` concatenates full valid regions.\n    - Indexed form (5 args): `TCONCAT(dst, src0, src1, src0Idx, src1Idx)` uses per-row index tiles to specify dynamic column counts.\n    - Indexed form (6 args): `TCONCAT(dst, src0, src1, dstIdx, src0Idx, src1Idx)` also outputs the concatenated column count per row.\n- All tiles must have `TileType::Vec`.\n- All tiles must use row-major layout (`isRowMajor == true`).\n\n### Shape Constraints\n\n- Basic form:\n    - `dst.GetValidRow() == src0.GetValidRow() == src1.GetValidRow()`\n    - `dst.GetValidCol() == src0.GetValidCol() + src1.GetValidCol()`\n- Indexed form:\n    - Row count constraints match the basic form.\n    - Column counts are determined dynamically from index tiles.\n    - `dstIdx.GetValidRow() == 1` for the 6-argument form.\n\n### Data Type Constraints\n\n- Supported element types: `int8_t`, `uint8_t`, `int16_t`, `uint16_t`, `int32_t`, `uint32_t`, `half`, `bfloat16_t`, `float`.\n- Source and destination tiles must have identical element types.\n- Index tiles must use integer types (`int8_t`, `uint8_t`, `int16_t`, `uint16_t`, `int32_t`, `uint32_t`).\n\n### A5 Implementation Checks\n\n- All tiles must be `TileType::Vec`.\n- All tiles must be row-major layout.\n- `validRows` must not exceed the physical tile rows for any operand.\n- Index tiles, if provided, must satisfy type compatibility checks.",
+  "cpp_intrinsic": "template <typename TileDst, typename TileSrc0, typename TileSrc1>\nPTO_INST void TCONCAT(TileDst &dst, TileSrc0 &src0, TileSrc1 &src1);\n\ntemplate <typename TileDst, typename TileSrc0, typename TileSrc1, typename TileSrc0Idx, typename TileSrc1Idx>\nPTO_INST void TCONCAT(TileDst &dst, TileSrc0 &src0, TileSrc1 &src1, TileSrc0Idx &src0Idx, TileSrc1Idx &src1Idx);\n\ntemplate <typename TileDst, typename TileSrc0, typename TileSrc1, typename TileDstIdx, typename TileSrc0Idx,\n          typename TileSrc1Idx>\nPTO_INST void TCONCAT(TileDst &dst, TileSrc0 &src0, TileSrc1 &src1, TileDstIdx &dstIdx, TileSrc0Idx &src0Idx,\n                      TileSrc1Idx &src1Idx);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\n\nusing namespace pto;\n\nvoid example_auto() {\n    using TileT = Tile<TileType::Vec, float, 16, 32>;\n    TileT src0(16, 16);\n    TileT src1(16, 16);\n    TileT dst(16, 32);\n\n    TCONCAT(dst, src0, src1);\n}"
+  ],
+  "illegal_cases": "",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Layout And Rearrangement"
+  ],
+  "mnemonic": "TCONCAT",
+  "name": "pto.tconcat",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/tile/ops/layout-and-rearrangement/tconcat.md"
+  ],
+  "summary": "Documented PTO instruction `pto.tconcat`.",
+  "syntax": "",
+  "target_profile_restrictions": ""
+}

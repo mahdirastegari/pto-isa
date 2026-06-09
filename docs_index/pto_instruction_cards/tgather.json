@@ -1,0 +1,24 @@
+{
+  "category": "Irregular And Complex",
+  "constraints": "!!! warning \"Constraints\"\n    - **Bounds / validity**:\n        - Index bounds are not validated by explicit runtime assertions; on A2/A3 and A5, out-of-range indices produce undefined results; on the CPU simulator, out-of-range indices are clamped to the valid range.",
+  "cpp_intrinsic": "template <typename TileDataD, typename TileDataS0, typename TileDataS1, typename TileDataTmp, typename... WaitEvents>\nPTO_INST RecordEvent TGATHER(TileDataD &dst, TileDataS0 &src0, TileDataS1 &src1, TileDataTmp &tmp, WaitEvents &... events);\n\ntemplate <typename DstTileData, typename SrcTileData, MaskPattern maskPattern, auto gatherType = GatherAxis::GATHER_ROW, typename... WaitEvents>\nPTO_INST RecordEvent TGATHER(DstTileData &dst, SrcTileData &src, WaitEvents &... events);\n\ntemplate <typename TileDataD, typename TileDataS, typename TileDataS1, typename TileDataC, typename TileDataTmp, CmpMode cmpMode, typename... WaitEvents>\nPTO_INST RecordEvent TGATHER(TileDataD &dst, TileDataS &src0, TileDataS1 &k_value, TileDataC &cdst, TileDataTmp &tmp, uint32_t offset, WaitEvents &... events);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\n\nusing namespace pto;\n\nvoid example_auto() {\n  using SrcT = Tile<TileType::Vec, float, 16, 16>;\n  using IdxT = Tile<TileType::Vec, int32_t, 16, 16>;\n  using DstT = Tile<TileType::Vec, float, 16, 16>;\n  SrcT src0;\n  IdxT idx;\n  DstT dst;\n  TGATHER(dst, src0, idx);\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal operand tuples, unsupported types, invalid layout combinations, or unsupported target-profile modes are rejected by the verifier or by the selected backend instruction set.\n    - Programs must not rely on behavior outside the documented legal domain of this operation, even if one backend currently accepts it.",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Irregular And Complex"
+  ],
+  "mnemonic": "TGATHER",
+  "name": "pto.tgather",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/tile/ops/irregular-and-complex/tgather.md",
+    "docs/isa/comm/TGATHER.md"
+  ],
+  "summary": "Gather/select elements using either an index tile or a compile-time mask pattern.",
+  "syntax": "%dst = tgather %src0, %indices : !pto.tile<...> -> !pto.tile<...>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - **Index-based gather: implementation checks (A2A3)**:\n        - `sizeof(DstTileData::DType)` must be 2 or 4 bytes (b16/b32).\n        - `sizeof(Src1TileData::DType)` must be 4 bytes (b32: `int32_t`, `uint32_t`).\n        - `DstTileData::DType` must be the same type as `Src0TileData::DType`.\n        - `TmpTileData::DType` must be the same type as `Src1TileData::DType`.\n        - `src1.GetValidCol() == TmpTileData::Cols` and `src1.GetValidRow() == TmpTileData::Rows`.\n        - `dst.GetValidCol() == DstTileData::Cols` (continuous dst storage).\n\n    - **Index-based gather: implementation checks (A5)**:\n        - `sizeof(DstTileData::DType)` must be must be `int16_t`, `uint16_t`, `int32_t`, `uint32_t`, `half`, `float`.\n        - `sizeof(Src1TileData::DType)` must be must be `int16_t`, `uint16_t`, `int32_t`, `uint32_t`.\n        - `DstTileData::DType` must be the same type as `Src0TileData::DType`.\n        - `src1.GetValidCol() == Src1TileData::Cols` and `dst.GetValidCol() == DstTileData::Cols`.\n\n    - **Mask-pattern gather: implementation checks (A2A3)**:\n        - Source element size must be `2` or `4` bytes.\n        - `SrcTileData::DType`/`DstTileData::DType` must be `int16_t` or `uint16_t` or `int32_t` or `uint32_t`\n        or `half` or `bfloat16_t` or `float`.\n        - `dst` and `src` must both be `TileType::Vec` and row-major.\n        - `sizeof(dst element) == sizeof(src element)` and `dst.GetValidCol() == DstTileData::Cols` (continuous dst storage).\n\n    - **Mask-pattern gather: implementation checks (A5)**:\n        - Source element size must be `1` or `2` or `4` bytes.\n        - `dst` and `src` must both be `TileType::Vec` and row-major.\n        - `SrcTileData::DType`/`DstTileData::DType` must be `int8_t` or `uint8_t` or `int16_t` or `uint16_t` or `int32_t` or `uint32_t`\n        or `half` or `bfloat16_t` or `float` or `float8_e4m3_t`or `float8_e5m2_t` or `hifloat8_t`.\n        - Supported dtypes are restricted to a target-defined set (checked via `static_assert` in the implementation), and `sizeof(dst element) == sizeof(src element)`, `dst.GetValidCol() == DstTileData::Cols` (continuous dst storage).\n\n    - **Comparison-based gather: implementation checks (A2A3)**:\n        - `TileDataD::DType` must be `int32_t` or `uint32_t`.\n        - `TileDataS::DType` must be `float`, `half`, or `int32_t` (EQ mode only).\n       "
+}

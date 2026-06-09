@@ -1,0 +1,23 @@
+{
+  "category": "Reduce And Expand",
+  "constraints": "!!! warning \"Constraints\"\n    ### General constraints / checks\n\n    - `dst` and `src` must be `TileType::Vec`.\n\n    - `dst` and `src` must use standard ND layout: row-major and non-fractal (`BLayout::RowMajor`, `SLayout::NoneBox`).\n\n    - `dst` and `src` must use the same element type.\n\n    - Runtime checks:\n      - `src.GetValidCol() == dst.GetValidCol()`\n\n    - Supported element types: `half`, `float`, `bfloat16_t`, `int16_t`, `uint16_t`, `int32_t`, `uint32_t`.",
+  "cpp_intrinsic": "template <typename TileDataOut, typename TileDataIn, typename... WaitEvents>\nPTO_INST RecordEvent TCOLPROD(TileDataOut &dst, TileDataIn &src, WaitEvents &... events);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\n\nusing namespace pto;\n\nvoid example_auto() {\n  using SrcT = Tile<TileType::Vec, float, 16, 16>;\n  using DstT = Tile<TileType::Vec, float, 1, 16>;\n  SrcT src;\n  DstT dst;\n  TCOLPROD(dst, src);\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal operand tuples, unsupported types, invalid layout combinations, or unsupported target-profile modes are rejected by the verifier or by the selected backend instruction set.\n    - Programs must not rely on behavior outside the documented legal domain of this operation, even if one backend currently accepts it.",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Reduce And Expand"
+  ],
+  "mnemonic": "TCOLPROD",
+  "name": "pto.tcolprod",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/tile/ops/reduce-and-expand/tcolprod.md"
+  ],
+  "summary": "Reduce each column by multiplying across rows.",
+  "syntax": "%dst = tcolprod %src : !pto.tile<...> -> !pto.tile<...>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - If `src.GetValidRow() == 0` or `src.GetValidCol() == 0`, the implementation returns early.\n\n    === \"A2/A3\"\n        - Supported element types: `half`, `float`, `int16_t`, `int32_t`.\n\n    === \"A5\"\n        No additional restriction is documented for this target."
+}

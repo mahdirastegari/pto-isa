@@ -1,0 +1,54 @@
+{
+  "assumptions": [
+    "MVP supports fp16 row-major two-dimensional tensors without broadcasting."
+  ],
+  "constraints": {
+    "alignment_required": true,
+    "broadcasting": false,
+    "tail_handling": true
+  },
+  "formula": "C[i, j] = max(A[i, j] + B[i, j], 0)",
+  "inputs": [
+    {
+      "dtype": "fp16",
+      "layout": "row_major",
+      "name": "A",
+      "shape": [
+        "M",
+        "N"
+      ]
+    },
+    {
+      "dtype": "fp16",
+      "layout": "row_major",
+      "name": "B",
+      "shape": [
+        "M",
+        "N"
+      ]
+    }
+  ],
+  "op_name": "add_relu",
+  "outputs": [
+    {
+      "dtype": "fp16",
+      "layout": "row_major",
+      "name": "C",
+      "shape": [
+        "M",
+        "N"
+      ]
+    }
+  ],
+  "performance_goal": {
+    "baseline": "numpy_cpu_or_torch_npu",
+    "metric": "latency_us"
+  },
+  "shape_suite_path": "artifacts/shapes/add_relu_shapes.json",
+  "user_request": "Generate a PTO kernel for C = relu(A + B), fp16 tensors shape [M,N]",
+  "verification": {
+    "atol": 0.001,
+    "reference": "np.maximum(A + B, 0)",
+    "rtol": 0.001
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "category": "Memory And Data Movement",
+  "constraints": "!!! warning \"Constraints\"\n    - **Valid region**: The transfer size is `dst.GetValidRow()` \u00d7 `dst.GetValidCol()`.\n    - **Element size match**: `sizeof(tile.dtype) == sizeof(gtensor.dtype)`.\n    - **Layout compatibility**: Source (GlobalTensor) layout and destination (tile) layout must be a supported combination. See the layout compatibility table in [Memory And Data Movement](../../memory-and-data-movement.md).\n    - **Shape positivity**: `src.GetShape(dim) > 0` and `dst.GetValidRow() > 0` and `dst.GetValidCol() > 0` at runtime.",
+  "cpp_intrinsic": "template <typename TileData, typename GlobalData, typename... WaitEvents>\nPTO_INST RecordEvent TLOAD(TileData &dst, GlobalData &src, WaitEvents &... events);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\nusing namespace pto;\n\ntemplate <typename T>\nvoid example(__gm__ T* in) {\n  using TileT = Tile<TileType::Vec, T, 16, 16>;\n  using GShape = Shape<1, 1, 1, 16, 16>;\n  using GStride = BaseShape2D<T, 16, 16, Layout::ND>;\n  using GTensor = GlobalTensor<T, GShape, GStride, Layout::ND>;\n\n  GTensor gin(in);\n  TileT t;\n  RecordEvent e = TLOAD(t, gin);\n  TSYNC(e);\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal operand tuples, unsupported types, invalid layout combinations, or unsupported target-profile modes are rejected by the verifier or by the selected backend instruction set.\n    - Programs must not rely on behavior outside the documented legal domain of this operation.",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Memory And Data Movement"
+  ],
+  "mnemonic": "TLOAD",
+  "name": "pto.tload",
+  "operands": [
+    "dst",
+    "src"
+  ],
+  "outputs": [
+    "RecordEvent"
+  ],
+  "sources": [
+    "docs/isa/tile/ops/memory-and-data-movement/tload.md"
+  ],
+  "summary": "Load data from global memory into a tile. The transfer is rectangular, spanning `dst.GetValidRow()` by `dst.GetValidCol()` elements.",
+  "syntax": "%t0 = tload %sv[%c0, %c0] : (!pto.memref<...>, index, index) -> !pto.tile<...>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    **A2/A3**:\n    - `TileData::DType` must be one of: `int8_t`, `uint8_t`, `int16_t`, `uint16_t`, `int32_t`, `uint32_t`, `int64_t`, `uint64_t`, `half`, `bfloat16_t`, `float`.\n    - Destination tile location must be `TileType::Vec` or `TileType::Mat`.\n    - `sizeof(TileData::DType) == sizeof(GlobalData::DType)`.\n    - `Vec` loads: layouts must match (ND\u2192ND, DN\u2192DN, NZ\u2192NZ).\n    - `Mat` loads: supports all combinations including ND\u2192NZ and DN\u2192ZN.\n    - For ND\u2192NZ or DN\u2192ZN: `GlobalData::staticShape[0..2] == 1` and `TileData::SFractalSize == 512`.\n    - `int64_t/uint64_t`: only ND\u2192ND or DN\u2192DN.\n\n    **A5**:\n    - `sizeof(TileData::DType)` must be 1, 2, 4, or 8 bytes, and must match `sizeof(GlobalData::DType)`.\n    - `Vec` loads: row-major ND\u2192ND, col-major DN\u2192DN, or row-major NZ\u2192NZ only.\n    - `Mat` loads: constrained by `TLoadCubeCheck` (specific ND/DN/NZ conversions and L1-size limits).\n    - `Mat` loads also handle `mx` format loads including `MX_A_ZZ/MX_A_ND/MX_A_DN` to ZZ for scalarA and `MX_B_NN/MX_B_ND/MX_B_DN` to NN for scalarB.\n    - For `MX_A_ZZ/MX_B_NN`: `GlobalData::staticShape[3] == 16` and `GlobalData::staticShape[4] == 2`.\n    - For `MX_A_ND/MX_ADN/MX_B_ND/MX_B_DN`: `GlobalData::staticShape[0] == 1` and `GlobalData::staticShape[1] == 1` and `GlobalData::staticShape[4] == 2`."
+}

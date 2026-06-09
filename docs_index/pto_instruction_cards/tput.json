@@ -1,0 +1,22 @@
+{
+  "category": "11. Communication ISA Reference",
+  "constraints": "!!! warning \"Constraints\"\n    - **Type constraints**:\n        - `GlobalSrcData::RawDType` must equal `GlobalDstData::RawDType`.\n        - `TileData::DType` must equal `GlobalSrcData::RawDType`.\n        - `GlobalSrcData::layout` must equal `GlobalDstData::layout`.\n    - **Memory constraints**:\n        - `dstGlobalData` must point to remote address (on target NPU).\n        - `srcGlobalData` must point to local address (on current NPU).\n        - `stagingTileData` / `pingTile` / `pongTile` must be pre-allocated in Unified Buffer.\n    - **Valid region**:\n        - Transfer size is determined by `GlobalTensor` shape (auto-chunked to fit tile).\n    - **Atomic operation**:\n        - `atomicType` supports `AtomicNone` and `AtomicAdd`.\n    - **Ping-pong**:\n        - `pingTile` and `pongTile` must have the same type and dimensions.\n        - Must reside at non-overlapping UB offsets.",
+  "cpp_intrinsic": "template <AtomicType atomicType = AtomicType::AtomicNone,\n          typename GlobalDstData, typename GlobalSrcData, typename TileData, typename... WaitEvents>\nPTO_INST RecordEvent PUT(GlobalDstData &dstGlobalData, GlobalSrcData &srcGlobalData,\n                        TileData &stagingTileData, WaitEvents&... events);",
+  "examples": [
+    "#include <pto/comm/pto_comm_inst.hpp>\n#include <pto/pto-inst.hpp>\n\nusing namespace pto;\n\ntemplate <typename T>\nvoid example_put(__gm__ T* local_data, __gm__ T* remote_addr) {\n    using TileT = Tile<TileType::Vec, T, 16, 16>;\n    using GShape = Shape<1, 1, 1, 16, 16>;\n    using GStride = BaseShape2D<T, 16, 16, Layout::ND>;\n    /*\n    If the globalTensor is larger than UB Tile, PUT will perform 2D sliding automatically.\n    using GShape = Shape<1, 1, 1, 4096, 4096>;\n    using GStride = BaseShape2D<T, 4096, 4096, Layout::ND>;\n    */\n    using GTensor = GlobalTensor<T, GShape, GStride, Layout::ND>;\n\n    GTensor srcG(local_data);\n    GTensor dstG(remote_addr);\n    TileT stagingTile;\n    TASSIGN(stagingTile, 0);\n\n    // Basic remote write\n    comm::PUT(dstG, srcG, stagingTile);\n\n    // Remote write with atomic add\n    comm::PUT<AtomicType::AtomicAdd>(dstG, srcG, stagingTile);\n}"
+  ],
+  "illegal_cases": "",
+  "instruction_set_path": [
+    "11. Communication ISA Reference"
+  ],
+  "mnemonic": "TPUT",
+  "name": "pto.tput",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/comm/TPUT.md"
+  ],
+  "summary": "Documented PTO instruction `pto.tput`.",
+  "syntax": "",
+  "target_profile_restrictions": ""
+}

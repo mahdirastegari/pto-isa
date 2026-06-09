@@ -1,0 +1,23 @@
+{
+  "category": "Tile Scalar And Immediate",
+  "constraints": "!!! warning \"Constraints\"\n    - **Division-by-zero**:\n        - Behavior is target-defined; the CPU simulator asserts in debug builds.\n\n    - **Valid region**:\n        - The op uses `dst.GetValidRow()` / `dst.GetValidCol()` as the iteration domain.\n\n    - **High-precision algorithm**:\n        - Only available on A5; A2A3 ignores the `PrecisionType` option.",
+  "cpp_intrinsic": "template <auto PrecisionType = FmodSAlgorithm::DEFAULT, typename TileDataDst, typename TileDataSrc,\n          typename... WaitEvents>\nPTO_INST RecordEvent TFMODS(TileDataDst &dst, TileDataSrc &src, typename TileDataSrc::DType scalar,\n                            WaitEvents &... events);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\n\nusing namespace pto;\n\nvoid example() {\n  using TileT = Tile<TileType::Vec, float, 16, 16>;\n  TileT x, out;\n  TFMODS(out, x, 3.0f);\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal operand tuples, unsupported types, invalid layout combinations, or unsupported target-profile modes are rejected by the verifier or by the selected backend instruction set.\n    - Programs must not rely on behavior outside the documented legal domain of this operation, even if one backend currently accepts it.",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Tile Scalar And Immediate"
+  ],
+  "mnemonic": "TFMODS",
+  "name": "pto.tfmods",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/tile/ops/tile-scalar-and-immediate/tfmods.md"
+  ],
+  "summary": "Elementwise remainder with a scalar: `fmod(src, scalar)`.",
+  "syntax": "%dst = tfmods %src, %scalar : !pto.tile<...>, f32",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - **Implementation checks (A2A3)**:\n        - `dst` and `src` must use the same element type.\n        - Supported element types are `float` and `float32_t`.\n        - `dst` and `src` must be vector tiles.\n        - `dst` and `src` must be row-major.\n        - Runtime: `dst.GetValidRow() == src.GetValidRow() > 0` and `dst.GetValidCol() == src.GetValidCol() > 0`.\n\n    - **Implementation checks (A5)**:\n        - `dst` and `src` must use the same element type.\n        - Supported element types are 2-byte or 4-byte types supported by the target implementation (including `half` and `float`).\n        - `dst` and `src` must be vector tiles.\n        - Static valid bounds must satisfy `ValidRow <= Rows` and `ValidCol <= Cols` for both tiles.\n        - Runtime: `dst.GetValidRow() == src.GetValidRow()` and `dst.GetValidCol() == src.GetValidCol()`."
+}

@@ -1,0 +1,23 @@
+{
+  "category": "Vector Load Store",
+  "constraints": "!!! warning \"Constraints\"\n    This instruction set is only legal for interleave distributions. The two source\n      vectors form an ordered pair, and the interleave semantics of that pair MUST\n      be preserved.",
+  "cpp_intrinsic": "",
+  "examples": [
+    "// INTLV_B32:\nfor (int i = 0; i < 64; i++) {\n    UB[base + 8*i]     = low[i];\n    UB[base + 8*i + 4] = high[i];\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - It is illegal to use addresses outside the required UB-visible space or to violate the alignment/distribution contract of the selected form.\n    - Masked-off lanes or inactive blocks do not make an otherwise-illegal address valid unless the operation text explicitly says so.\n    - Any additional illegality stated in the constraints section is also part of the contract.",
+  "instruction_set_path": [
+    "9. Vector Instruction Reference",
+    "Vector Load Store"
+  ],
+  "mnemonic": "VSTSX2",
+  "name": "pto.vstsx2",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/vector/ops/vector-load-store/vstsx2.md"
+  ],
+  "summary": "Dual interleaved store (SoA \u2192 AoS conversion).",
+  "syntax": "vstsx2 %low, %high, %dest[%offset], \"DIST\", %mask",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - A5 is the most detailed concrete profile in the current manual; CPU simulation and A2/A3-class targets may support narrower subsets or emulate the behavior while preserving the visible PTO contract.\n    - Code that depends on an instruction-set-specific type list, distribution mode, or fused form should treat that dependency as target-profile-specific unless the PTO manual states cross-target portability explicitly."
+}

@@ -1,0 +1,23 @@
+{
+  "category": "Irregular And Complex",
+  "constraints": "!!! warning \"Constraints\"\n    - **Offset interpretation**:\n        - Offsets are interpreted as `uint32_t` values (byte offsets) by the implementation.\n        - Offset bounds are not validated by explicit runtime assertions; on A2/A3 and A5, out-of-range offsets produce undefined results; on the CPU simulator, out-of-range offsets are clamped to the source tile boundary.",
+  "cpp_intrinsic": "template <typename TileDataDst, typename TileDataSrc, typename TileDataOffset, typename... WaitEvents>\nPTO_INST RecordEvent TGATHERB(TileDataDst &dst, TileDataSrc &src, TileDataOffset &offset, WaitEvents &... events);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\n\nusing namespace pto;\n\nvoid example_auto() {\n  using SrcT = Tile<TileType::Vec, uint8_t, 1, 256>;\n  using OffT = Tile<TileType::Vec, uint32_t, 1, 256>;\n  using DstT = Tile<TileType::Vec, uint8_t, 1, 256>;\n  SrcT src;\n  OffT off;\n  DstT dst;\n  TGATHERB(dst, src, off);\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal operand tuples, unsupported types, invalid layout combinations, or unsupported target-profile modes are rejected by the verifier or by the selected backend instruction set.\n    - Programs must not rely on behavior outside the documented legal domain of this operation, even if one backend currently accepts it.",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Irregular And Complex"
+  ],
+  "mnemonic": "TGATHERB",
+  "name": "pto.tgatherb",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/tile/ops/irregular-and-complex/tgatherb.md"
+  ],
+  "summary": "Gather elements using byte offsets.",
+  "syntax": "%dst = tgatherb %src, %offsets : !pto.tile<...> -> !pto.tile<...>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - **Implementation checks (A2A3)**:\n        - Destination layout must be row-major (`TileDataDst::isRowMajor`).\n        - Destination element size must be `1`, `2`, or `4` bytes (enforced via `static_assert` in the helper).\n        - `SrcTileData::DType`/`DstTileData::DType` must be `int8_t` or `uint8_t` or `int16_t` or `uint16_t` or `int32_t` or `uint32_t` or `half` or `bfloat16_t` or `float`.\n\n    - **Implementation checks (A5)**:\n        - Destination element size must be `1`, `2`, or `4` bytes.\n        - `SrcTileData::DType`/`DstTileData::DType` must be `int8_t` or `uint8_t` or `int16_t` or `uint16_t` or `int32_t` or `uint32_t` or `half` or `bfloat16_t` or `float`."
+}

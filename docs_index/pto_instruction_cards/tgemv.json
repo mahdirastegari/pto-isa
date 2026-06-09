@@ -1,0 +1,23 @@
+{
+  "category": "Matrix And Matrix Vector",
+  "constraints": "!!! warning \"Constraints\"\n    ### Common shape and location constraints\n\n    These constraints apply to `TGEMV`, `TGEMV_ACC`, and `TGEMV_BIAS` unless otherwise noted.\n\n    - Static shape constraints:\n        - `TileLeft::Rows == TileRes::Rows`\n        - `TileLeft::Cols == TileRight::Rows`\n        - `TileRight::Cols == TileRes::Cols`\n\n    - Tile locations:\n        - `TileLeft::Loc == Left`\n        - `TileRight::Loc == Right`\n        - `TileRes::Loc == Acc`\n\n    - Runtime valid-size constraints:\n        - `m` must be `1`\n        - `k` and `n` (taken from `bMatrix.GetValidRow()` and `bMatrix.GetValidCol()`) must be in `[1, 4095]`\n\n    ### TGEMV / TGEMV_ACC datatype constraints\n\n    - Bias tile datatype must exactly match `TileRes::DType`.\n\n    - Bias tile must be configured as a single row.\n\n    - Bias tile location must be `TileType::Bias`.",
+  "cpp_intrinsic": "template <typename TileRes, typename TileLeft, typename TileRight, typename... WaitEvents>\nPTO_INST RecordEvent TGEMV(TileRes &cMatrix, TileLeft &aMatrix, TileRight &bMatrix, WaitEvents&... events);\n\ntemplate <typename TileRes, typename TileLeft, typename TileRight, typename... WaitEvents>\nPTO_INST RecordEvent TGEMV_ACC(TileRes &cOutMatrix, TileRes &cInMatrix, TileLeft &aMatrix, TileRight &bMatrix, WaitEvents&... events);\n\ntemplate <typename TileRes, typename TileLeft, typename TileRight, typename TileBias, typename... WaitEvents>\nPTO_INST RecordEvent TGEMV_BIAS(TileRes &cMatrix, TileLeft &aMatrix, TileRight &bMatrix, TileBias &biasData, WaitEvents&... events);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\n\nusing namespace pto;\n\nvoid example_auto() {\n  using A = TileLeft<half, 1, 16>;\n  using B = TileRight<half, 16, 16>;\n  using C = TileAcc<float, 1, 16>;\n  A a;\n  B b;\n  C c;\n  TGEMV(c, a, b);\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal operand tuples, unsupported types, invalid layout combinations, or unsupported target-profile modes are rejected by the verifier or by the selected backend instruction set.\n    - Programs must not rely on behavior outside the documented legal domain of this operation, even if one backend currently accepts it.",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Matrix And Matrix Vector"
+  ],
+  "mnemonic": "TGEMV",
+  "name": "pto.tgemv",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/tile/ops/matrix-and-matrix-vector/tgemv.md"
+  ],
+  "summary": "General Matrix-Vector multiplication producing an accumulator/output tile.",
+  "syntax": "%acc = tgemv %a, %b : (!pto.tile<...>, !pto.tile<...>) -> !pto.tile<...>\n\n%acc1 = tgemv.acc %acc0, %a, %b : (!pto.tile<...>, !pto.tile<...>, !pto.tile<...>) -> !pto.tile<...>\n\n%acc = tgemv.bias %a, %b, %bias : (!pto.tile<...>, !pto.tile<...>, !pto.tile<...>) -> !pto.tile<...>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - **Implementation checks (A2A3)**:\n        - Supported `(CType, AType, BType)` triples:\n            - `(int32_t, int8_t, int8_t)`\n            - `(float, half, half)`\n            - `(float, float, float)`\n            - `(float, bfloat16_t, bfloat16_t)`\n\n    - **Implementation checks (A5)**:\n        - Accumulator type must be `int32_t` or `float`.\n        - If `int32_t`: `AType == int8_t` and `BType == int8_t`.\n        - If `float`: supports `half`, `bfloat16_t`, `float`, and selected fp8 pairs (target-defined).\n        - Fractal/layout constraints are enforced:\n            - Left: `Loc == Left`, `!isRowMajor`, `SFractal == RowMajor`\n            - Right: `Loc == Right`, `isRowMajor`, `SFractal == ColMajor`\n            - Acc: `Loc == Acc`, `!isRowMajor`, `SFractal == RowMajor`\n\n    ### TGEMV_BIAS additional constraints\n\n    - **Additional A5 note**:\n        - No separate explicit `m/k/n` runtime assertions are enforced in the underlying A5 matmul implementation beyond the GEMV contract described above."
+}

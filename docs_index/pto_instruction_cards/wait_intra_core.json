@@ -1,0 +1,26 @@
+{
+  "category": "Pipeline Sync",
+  "constraints": "!!! warning \"Constraints\"\n    - **A5 only**: `wait_intra_core` is only available on the A5 profile.\n    - **Per-pipeline blocking**: Only the named pipeline is blocked. All other pipelines continue. This differs fundamentally from A2A3's SU-level blocking.\n    - **Semaphore ID mapping**: IDs 0\u201315 target AIV0; IDs 16\u201331 target AIV1.\n    - **Event must be set**: Waiting on an event that was never set is **illegal**.\n    - **Semaphore pool**: 16 physical IDs, 32-ID address space. IDs outside 0\u201331 are **illegal**.",
+  "cpp_intrinsic": "pipe_t pipe = PIPE_V;\nuint64_t syncId = 0;\nwait_intra_block(pipe, syncId);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\nusing namespace pto;\n\n// A2A3 (wait_flag_dev): entire core stalls\n// WAIT_FLAG_DEV(/* event_id */ 0);  // ALL pipelines blocked\n\n// A5 (wait_intra_core): only PIPE_V stalls\nWAIT_INTRA_CORE(PIPE_V, /* sem_id */ 0);  // Only Vector pipe stalls\n// PIPE_MTE2 and PIPE_MTE3 continue executing"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal on non-A5 profiles.\n    - Illegal if `%sem_id` is outside the range 0\u201331.\n    - Illegal if the event was never set by a remote subblock.",
+  "instruction_set_path": [
+    "10. Scalar And Control Reference",
+    "Pipeline Sync"
+  ],
+  "mnemonic": "WAIT_INTRA_CORE",
+  "name": "pto.wait_intra_core",
+  "operands": [
+    "pipe",
+    "sem_id"
+  ],
+  "outputs": [],
+  "sources": [
+    "docs/isa/scalar/ops/pipeline-sync/wait-intra-core.md"
+  ],
+  "summary": "Block a specific pipeline within a cluster (A5) until a subblock signals an event. Only the named pipeline stalls; other pipelines on the same core continue executing.",
+  "syntax": "pto.wait_intra_core %pipe, %sem_id : i64, i64",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    | Aspect | CPU Sim | A2/A3 | A5 |\n    |--------|:-------:|:------:|:--:|\n    | `wait_intra_core` | Not available | Use `wait_flag_dev` | Supported |\n    | Blocking scope | Not applicable | Entire SU blocked | Only named pipe blocked |\n    | Other pipes during wait | Not applicable | All stalled | Continue executing |\n    | Semaphore pool | Not applicable | 16 IDs | 16 IDs, 32-ID address space |"
+}

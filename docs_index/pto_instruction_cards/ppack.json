@@ -1,0 +1,27 @@
+{
+  "category": "Predicate Generation And Algebra",
+  "constraints": "!!! warning \"Constraints\"\n    - **Partition token**: MUST be `\"LOWER\"` or `\"HIGHER\"`. Other tokens are **illegal**.\n    - **Destination width**: The destination predicate is always 2N bits. Programs MUST ensure the destination context expects a 2N-bit predicate. Attempting to use a 2N-bit result in an N-bit context without explicit extraction via `punpack` is **illegal**.\n    - **Source width**: The source predicate MUST be N bits (half the destination width). Mismatched widths are **illegal**.\n    - **Zero-fill behavior**: The non-selected half of the destination is always zero-filled, not sign-extended or replicated.",
+  "cpp_intrinsic": "vector_bool dst;\nvector_bool src;\nppack(dst, src, __cce_simd::LOWER);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\nusing namespace pto;\n\nvoid pack_for_f32(RegBuf<predicate_t>& dst,\n                  const RegBuf<predicate_t>& lo,\n                  const RegBuf<predicate_t>& hi) {\n    // dst = [ZERO(32) | lo] = hi concatenated with zero\n    PPACK(dst, lo, \"LOWER\");\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal if the partition token is not `\"LOWER\"` or `\"HIGHER\"`.\n    - Illegal if source and destination predicate widths are not in a 1:2 ratio.\n    - Illegal if the operation is used in a context that does not expect a 2N-bit result.",
+  "instruction_set_path": [
+    "10. Scalar And Control Reference",
+    "Predicate Generation And Algebra"
+  ],
+  "mnemonic": "PPACK",
+  "name": "pto.ppack",
+  "operands": [
+    "src"
+  ],
+  "outputs": [
+    "dst"
+  ],
+  "sources": [
+    "docs/isa/scalar/ops/predicate-generation-and-algebra/ppack.md"
+  ],
+  "summary": "Narrowing pack: concatenate two N-bit predicate segments into one 2N-bit predicate register, selecting one segment by a partition token.",
+  "syntax": "%dst = pto.ppack %src, \"PART\" : !pto.mask<G> -> !pto.mask<G>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    | Aspect | CPU Sim | A2/A3 | A5 |\n    |--------|:-------:|:------:|:--:|\n    | Pack operation | Simulated | Supported | Supported |\n    | `LOWER` / `HIGHER` tokens | Supported | Supported | Supported |"
+}

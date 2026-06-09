@@ -1,0 +1,26 @@
+{
+  "category": "Sync And Config",
+  "constraints": "!!! warning \"Constraints\"\n    - On A2/A3, calling `pto.settf32mode` is legal but has no effect.\n    - On A5, `enable` must be `true` or `false` and `mode` must be a supported `RoundMode` (only `CAST_ROUND` is currently defined).\n    - On CPU simulator, any combination of enable and mode is accepted without error.\n    - This instruction has control-state side effects and should be ordered appropriately relative to dependent compute instructions.",
+  "cpp_intrinsic": "template <bool isEnable, RoundMode tf32TransMode = RoundMode::CAST_ROUND, typename... WaitEvents>\nPTO_INST RecordEvent SETTF32MODE(WaitEvents &... events);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\nusing namespace pto;\n\nvoid example_enable_tf32() {\n  SETTF32MODE<true, RoundMode::CAST_ROUND>();\n}"
+  ],
+  "illegal_cases": "",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Sync And Config"
+  ],
+  "mnemonic": "SETTF32MODE",
+  "name": "pto.settf32mode",
+  "operands": [
+    "enable",
+    "mode"
+  ],
+  "outputs": [],
+  "sources": [
+    "docs/isa/tile/ops/sync-and-config/settf32mode.md"
+  ],
+  "summary": "Configure TF32 transform mode for FP32 matrix-multiplication and convolution paths. This programs the CCE (Cube Compute Engine) TF32 mode register.\n\nOn A2/A3, TF32 is not supported and `pto.settf32mode` is a no-op; the enable flag is ignored and no mode state is established. On A5, when `enable = true`, the backend configures the CCE to use TF32 mantissa truncation (7-bit mantissa) for subsequent FP32 matrix-multiplication and convolution paths; the `mode` field selects the rounding behavior. On the CPU simulator, `pto.settf32mode` is a functional no-op that preserves the mode state in software.\n\nThis instruction controls backend-specific TF32 transformation behavior used by supported compute paths. It is part of the tile synchronization or configuration shell, so the visible effect is ordering or state setup rather than arithmetic payload transformation.\n\nNo direct tensor arithmetic is produced by this instruction. It updates target mode state used by subsequent instructions.",
+  "syntax": "pto.settf32mode {enable = true, mode = ...}",
+  "target_profile_restrictions": ""
+}

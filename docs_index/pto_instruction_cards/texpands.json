@@ -1,0 +1,23 @@
+{
+  "category": "Tile Scalar And Immediate",
+  "constraints": "!!! warning \"Constraints\"\n    - **Valid region**:\n        - For `TileType::Vec` :\n        - The op fills `dst` over `dst.GetValidRow()` / `dst.GetValidCol()`.\n        - For  `TileType::Mat` :\n        - For Tile : The op fills `dst` over `TileData::Rows` / `TileData::Cols`.\n        - For ConvTile : The op fills `dst` over `ConvTileData`'s shape.",
+  "cpp_intrinsic": "template <typename TileData, typename... WaitEvents>\nPTO_INST RecordEvent TEXPANDS(TileData &dst, typename TileData::DType scalar, WaitEvents &... events);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\n\nusing namespace pto;\n\nvoid example_auto() {\n  using TileT = Tile<TileType::Vec, float, 16, 16>;\n  TileT dst;\n  TEXPANDS(dst, 0.0f);\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal operand tuples, unsupported types, invalid layout combinations, or unsupported target-profile modes are rejected by the verifier or by the selected backend instruction set.\n    - Programs must not rely on behavior outside the documented legal domain of this operation, even if one backend currently accepts it.",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Tile Scalar And Immediate"
+  ],
+  "mnemonic": "TEXPANDS",
+  "name": "pto.texpands",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/tile/ops/tile-scalar-and-immediate/texpands.md"
+  ],
+  "summary": "Broadcast a scalar into a destination tile.",
+  "syntax": "%dst = texpands %scalar : f32, !pto.tile<...>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - **Implementation checks (A2A3)**:\n        - For `TileType::Vec` :\n          - `TileData::DType` must be one of: `uint8_t`, `int8_t`, `uint16_t`, `int16_t`, `uint32_t`, `int32_t`, `half`, `bfloat16_t`, `float`.\n          - Static valid bounds: `TileData::ValidRow <= TileData::Rows` and `TileData::ValidCol <= TileData::Cols`.\n        - For  `TileType::Mat` :\n          - `TileData::DType` must be one of: `uint8_t`, `int8_t`, `uint16_t`, `int16_t`, `uint32_t`, `int32_t`, `half`, `bfloat16_t`, `float`.\n          - Static valid bounds: `The range of  TileData::Rows * TileData::Cols * sizeof(T) / 32 is [1, 32767]`.\n\n    - **Implementation checks (A5)**:\n        - For `TileType::Vec` :\n          - `TileData::DType` must be one of: `uint8_t`, `int8_t`, `uint16_t`, `int16_t`, `uint32_t`, `int32_t`, `half`, `float`.\n          - Tile layout must be row-major (`TileData::isRowMajor`).\n          - Static valid bounds: `TileData::ValidRow <= TileData::Rows` and `TileData::ValidCol <= TileData::Cols`.\n        - For  `TileType::Mat` :\n          - `TileData::DType` must be one of: `uint8_t`, `int8_t`, `uint16_t`, `int16_t`, `uint32_t`, `int32_t`, `half`, `float`.\n          - For`TileDataDst::layout == pto::Layout::NC1HWC0 || TileDataDst::layout == pto::Layout::FRACTAL_Z`:\n            - `The range of convtile's (shape0 * shape1 * shape2 * shape3) is [1, 32767]`.\n          - For`TileDataDst::layout == pto::Layout::NDC1HWC0 || TileDataDst::layout == pto::Layout::FRACTAL_Z_3D`:\n            - `The range of convtile's (shape0 * shape1 * shape2 * shape3 * shape4) is [1, 32767]`."
+}

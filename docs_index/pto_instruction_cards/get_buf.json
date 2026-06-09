@@ -1,0 +1,26 @@
+{
+  "category": "Pipeline Sync",
+  "constraints": "!!! warning \"Constraints\"\n    - **Buffer ID uniqueness per pipeline**: Each pipeline may hold at most one slot per buffer ID at a time. Acquiring the same buffer ID twice on the same pipeline without an intervening `rls_buf` is **illegal**.\n    - **Producer must release**: The producer pipeline must have issued `rls_buf` on the same buffer ID before this acquire can succeed. Acquiring a buffer that was never released (first iteration) succeeds immediately since all slots start free.\n    - **No explicit event IDs**: Unlike `set_flag`/`wait_flag`, buffer ID management requires no explicit event naming. The hardware maps buffer IDs to internal event IDs.\n    - **Buffer ID range**: Buffer IDs MUST be in the range `[0, B)` where `B` is the profile-defined maximum. Out-of-range IDs are **illegal**.",
+  "cpp_intrinsic": "pipe_t pipe = PIPE_S;\nuint64_t bufId = 0;\nbool mode = true;\nget_buf(pipe, bufId, mode);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\nusing namespace pto;\n\nvoid compute_loop(int64_t buf_id,\n                 Ptr<ub_space_t, ub_t> ub_in,\n                 Ptr<ub_space_t, ub_t> ub_out) {\n    // Consumer (Vector pipe) acquires input buffer\n    GET_BUF(buf_id, PIPE_V, 0);\n\n    // Vector load, compute, store ...\n    RegBuf<predicate_t> mask;\n    PSET_B32(mask, \"PAT_ALL\");\n\n    // Release input buffer so MTE2 can reuse it\n    RLS_BUF(buf_id, PIPE_V, 0);\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal if `%buf_id` is not in the valid range for the target profile.\n    - Illegal if the same pipeline acquires the same buffer ID twice without an intervening `rls_buf`.\n    - Illegal if the buffer ID was never released and the producer has not yet issued `rls_buf` (the acquire will block indefinitely, which is treated as a protocol error).\n    - Illegal on CPU simulator if buffer state is inconsistent.",
+  "instruction_set_path": [
+    "10. Scalar And Control Reference",
+    "Pipeline Sync"
+  ],
+  "mnemonic": "GET_BUF",
+  "name": "pto.get_buf",
+  "operands": [
+    "buf_id",
+    "mode"
+  ],
+  "outputs": [],
+  "sources": [
+    "docs/isa/scalar/ops/pipeline-sync/get-buf.md"
+  ],
+  "summary": "Acquire a buffer slot in a double-buffering protocol. Implicitly signals readiness to the consuming pipeline via the buffer-token event system.",
+  "syntax": "pto.get_buf %buf_id, \"PIPE_*\", %mode : i64, i64",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    | Aspect | CPU Sim | A2/A3 | A5 |\n    |--------|:-------:|:------:|:--:|\n    | Buffer acquire | Simulated | Supported | Supported |\n    | Implicit set_flag | Simulated | Supported | Supported |\n    | Blocking on unavailable slot | Simulated | Supported | Supported |\n    | Maximum buffer IDs | Implementation-defined | 32 (global pool) | 32 (global pool) |"
+}

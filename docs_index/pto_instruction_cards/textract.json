@@ -1,0 +1,21 @@
+{
+  "category": "Layout And Rearrangement",
+  "constraints": "!!! warning \"Constraints\"\n    - **Runtime bounds**: `indexRow + DstTileData::Rows <= SrcTileData::Rows` and `indexCol + DstTileData::Cols <= SrcTileData::Cols`\n    - **Type match**: `DstTileData::DType` must equal `SrcTileData::DType`\n    - **Fp tile location**: `FpTileData::Loc` must be `TileType::Scaling` (A2/A3 and A5 both enforce this via `static_assert`)\n    - **Fix-pipe path**: The backend offsets the FPC address by `indexCol` (counted in units of the fp tile's element width) before configuring the fix-pipe",
+  "cpp_intrinsic": "#include <pto/pto-inst.hpp>\nusing namespace pto;\n\n// Variant 1: Plain extract\ntemplate <typename DstTileData, typename SrcTileData, typename... WaitEvents>\nPTO_INST RecordEvent TEXTRACT(DstTileData &dst, SrcTileData &src,\n                              uint16_t indexRow = 0, uint16_t indexCol = 0, WaitEvents &... events);\n\n// Variant 2: ReLU extract\ntemplate <typename DstTileData, typename SrcTileData, ReluPreMode reluMode,\n          typename... WaitEvents>\nPTO_INST RecordEvent TEXTRACT(DstTileData &dst, SrcTileData &src,\n                              uint16_t indexRow, uint16_t indexCol, WaitEvents &... events);\n\n// Variant 3: Scalar-quant extract\ntemplate <typename DstTileData, typename SrcTileData, ReluPreMode reluMode = ReluPreMode::NoRelu,\n          typename... WaitEvents>\nPTO_INST RecordEvent TEXTRACT(DstTileData &dst, SrcTileData &src,\n                              uint64_t preQuantScalar, uint16_t indexRow, uint16_t indexCol, WaitEvents &... events);\n\n// Variant 4: Fix-pipe extract (TEXTRACT_FP)\ntemplate <typename DstTileData, typename SrcTileData, typename FpTileData,\n          ReluPreMode reluMode = ReluPreMode::NoRelu, typename... WaitEvents>\nPTO_INST RecordEvent TEXTRACT_FP(DstTileData &dst, SrcTileData &src, FpTileData &fp,\n                                 uint16_t indexRow, uint16_t indexCol, WaitEvents &... events);",
+  "examples": [],
+  "illegal_cases": "",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Layout And Rearrangement"
+  ],
+  "mnemonic": "TEXTRACT",
+  "name": "pto.textract",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/tile/ops/layout-and-rearrangement/textract.md"
+  ],
+  "summary": "`TEXTRACT` pulls a sub-tile out of a larger source tile, starting at a configurable `(indexRow, indexCol)` offset. It is the natural counterpart to `TINSERT` \u2014 where `TINSERT` writes into a destination, `TEXTRACT` reads out of a source.\n\nTwo variants are documented here:\n\n| Variant | Suffix | Description | Typical Use |\n|---------|---------|-------------|-------------|\n| Standard extract | *(none)* | Extract a sub-window with optional ReLU | `Mat\u2192Left/Right/Scale`, `Acc\u2192Mat` |\n| Fix-pipe extract | `_fp` | Extract through the fix-pipe quantization path | `Acc\u2192Mat` with per-channel scaling |",
+  "syntax": "%dst = textract %src[%r0, %r1] : !pto.tile<...> -> !pto.tile<...>",
+  "target_profile_restrictions": ""
+}

@@ -1,0 +1,23 @@
+{
+  "category": "Matrix And Matrix Vector",
+  "constraints": "!!! warning \"Constraints\"\n    - Uses backend-specific mx legality checks for data types, tile locations, fractal/layout combinations, and scaling formats.\n\n    - Scale tile compatibility and accumulator promotion are concrete per target. On A2/A3: scale tiles must match the input element type (e.g., float8 scales for float8 inputs) and the accumulator must be float32; no other type combinations are supported. On A5: scale tiles follow MX format block scaling rules where each scale tile encodes per-block scaling factors for both A and B operands, and the accumulator must be float32; fp8 scale tile types follow the selected fp8 variant. On CPU simulator: follows A5 semantics.\n\n    - For portability, validate the exact `(A, B, scaleA, scaleB, C)` type tuple and tile layout against target implementation constraints.",
+  "cpp_intrinsic": "template <typename TileRes, typename TileLeft, typename TileLeftScale, typename TileRight, typename TileRightScale,\n          typename... WaitEvents>\nPTO_INST RecordEvent TGEMV_MX(TileRes &cMatrix, TileLeft &aMatrix, TileLeftScale &aScaleMatrix, TileRight &bMatrix, TileRightScale &bScaleMatrix, WaitEvents &... events);\n\ntemplate <AccPhase Phase, typename TileRes, typename TileLeft, typename TileLeftScale, typename TileRight,\n          typename TileRightScale, typename... WaitEvents>\nPTO_INST RecordEvent TGEMV_MX(TileRes &cMatrix, TileLeft &aMatrix, TileLeftScale &aScaleMatrix, TileRight &bMatrix, TileRightScale &bScaleMatrix, WaitEvents &... events);\n\ntemplate <typename TileRes, typename TileLeft, typename TileLeftScale, typename TileRight, typename TileRightScale,\n          typename... WaitEvents>\nPTO_INST RecordEvent TGEMV_MX(TileRes &cOutMatrix, TileRes &cInMatrix, TileLeft &aMatrix, TileLeftScale &aScaleMatrix, TileRight &bMatrix, TileRightScale &bScaleMatrix, WaitEvents &... events);\n\ntemplate <AccPhase Phase, typename TileRes, typename TileLeft, typename TileLeftScale, typename TileRight,\n          typename TileRightScale, typename... WaitEvents>\nPTO_INST RecordEvent TGEMV_MX(TileRes &cOutMatrix, TileRes &cInMatrix, TileLeft &aMatrix, TileLeftScale &aScaleMatrix, TileRight &bMatrix, TileRightScale &bScaleMatrix, WaitEvents &... events);\n\ntemplate <typename TileRes, typename TileLeft, typename TileLeftScale, typename TileRight, typename TileRightScale,\n          typename TileBias, typename... WaitEvents>\nPTO_INST RecordEvent TGEMV_MX(TileRes &cMatrix, TileLeft &aMatrix, TileLeftScale &aScaleMatrix, TileRight &bMatrix, TileRightScale &bScaleMatrix, TileBias &biasData, WaitEvents &... events);\n\ntemplate <AccPhase Phase, typename TileRes, typename TileLeft, typename TileLeftScale, typename TileRight,\n          typename TileRightScale, typename TileBias, typename... WaitEvents>\nPTO_INST RecordEvent TGEMV_MX(TileRes &cMatrix, TileLeft &aMatrix, TileLeftScale &aScaleMatrix, TileRight &bMatrix, TileRightScale &bScaleMatrix, TileBias &biasData, WaitEvents &... events);",
+  "examples": [
+    "# Auto mode: compiler/runtime-managed placement and scheduling.\n%acc = pto.tgemv.mx %a, %a_scale, %b, %b_scale : (!pto.tile<...>, !pto.tile<...>, !pto.tile<...>, !pto.tile<...>) -> !pto.tile<...>"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal operand tuples, unsupported types, invalid layout combinations, or unsupported target-profile modes are rejected by the verifier or by the selected backend instruction set.\n    - Programs must not rely on behavior outside the documented legal domain of this operation, even if one backend currently accepts it.",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Matrix And Matrix Vector"
+  ],
+  "mnemonic": "TGEMV_MX",
+  "name": "pto.tgemv_mx",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/tile/ops/matrix-and-matrix-vector/tgemv-mx.md"
+  ],
+  "summary": "GEMV in an MX block-scale format, with explicit left and right scale tiles.",
+  "syntax": "%acc = tgemv.mx %a, %a_scale, %b, %b_scale : (!pto.tile<...>, !pto.tile<...>, !pto.tile<...>, !pto.tile<...>) -> !pto.tile<...>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - `pto.tgemv_mx` preserves PTO-visible semantics across CPU simulation, A2/A3-class targets, and A5-class targets, but concrete support subsets may differ by profile.\n\n    - Portable code must rely only on the documented type, layout, shape, and mode combinations that the selected target profile guarantees."
+}

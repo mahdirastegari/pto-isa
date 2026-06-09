@@ -1,0 +1,26 @@
+{
+  "category": "Reduction Instructions",
+  "constraints": "!!! warning \"Constraints\"\n    - **Narrow integer widening**: Some narrow integer forms (e.g., `i8`, `i16`) may use an internal wider accumulator; the final result is still returned in the declared result type.\n    - **All lanes inactive**: If all predicate bits are zero, `dst[0]` is zero and all other lanes are zero.\n    - **Mask granularity**: The mask has one bit per lane; partial-masking at sub-lane granularity is not supported.",
+  "cpp_intrinsic": "",
+  "examples": [
+    "T sum = 0;\nfor (int i = 0; i < N; i++)\n    sum += src[i];\ndst[0] = sum;\nfor (int i = 1; i < N; i++)\n    dst[i] = 0;"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - The verifier rejects illegal operand shapes, unsupported element types, and attribute combinations that are not valid for the selected instruction set or target profile.\n    - Any additional illegality stated in the constraints section is also part of the contract.",
+  "instruction_set_path": [
+    "9. Vector Instruction Reference",
+    "Reduction Instructions"
+  ],
+  "mnemonic": "VCADD",
+  "name": "pto.vcadd",
+  "operands": [
+    "input",
+    "mask"
+  ],
+  "outputs": [],
+  "sources": [
+    "docs/isa/vector/ops/reduction-ops/vcadd.md"
+  ],
+  "summary": "Full-vector reduction that sums all active lanes into a single scalar result, written to lane 0 with all other lanes zeroed.",
+  "syntax": "vcadd %dst, %src, %mask : !pto.vreg<NxT>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - Documented A5 coverage: `i16-i64`, `f16`, `f32`.\n    - A5 is the most detailed concrete profile in the current manual; CPU simulation and A2/A3-class targets may support narrower subsets or emulate the behavior while preserving the visible PTO contract.\n    - Code that depends on an instruction-set-specific type list, distribution mode, or fused form should treat that dependency as target-profile-specific unless the PTO manual states cross-target portability explicitly."
+}

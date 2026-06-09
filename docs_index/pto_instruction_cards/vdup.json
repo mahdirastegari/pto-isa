@@ -1,0 +1,23 @@
+{
+  "category": "Predicate And Materialization",
+  "constraints": "!!! warning \"Constraints\"\n    `position` selects which source element or scalar position is duplicated. The\n      current PTO ISA vector instructions representation models that selector as an attribute rather than a\n      separate operand.",
+  "cpp_intrinsic": "",
+  "examples": [
+    "for (int i = 0; i < N; i++)\n    dst[i] = input_scalar_or_element;"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - The verifier rejects illegal operand shapes, unsupported element types, and attribute combinations that are not valid for the selected instruction set or target profile.\n    - Any additional illegality stated in the constraints section is also part of the contract.",
+  "instruction_set_path": [
+    "9. Vector Instruction Reference",
+    "Predicate And Materialization"
+  ],
+  "mnemonic": "VDUP",
+  "name": "pto.vdup",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/vector/ops/predicate-and-materialization/vdup.md"
+  ],
+  "summary": "Duplicate scalar or vector element to all lanes.",
+  "syntax": "vdup %result, %input {position = \"POSITION\"}",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - A5 is the most detailed concrete profile in the current manual; CPU simulation and A2/A3-class targets may support narrower subsets or emulate the behavior while preserving the visible PTO contract.\n    - Code that depends on an instruction-set-specific type list, distribution mode, or fused form should treat that dependency as target-profile-specific unless the PTO manual states cross-target portability explicitly."
+}

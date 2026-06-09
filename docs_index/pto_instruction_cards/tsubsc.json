@@ -1,0 +1,23 @@
+{
+  "category": "Tile Scalar And Immediate",
+  "constraints": "!!! warning \"Constraints\"\n    - **Common constraints**:\n        - Tile location must be vector (`TileData::Loc == TileType::Vec`).\n        - Static valid bounds: `TileData::ValidRow <= TileData::Rows` and `TileData::ValidCol <= TileData::Cols`.\n        - Runtime: `dst`, `src0` and `src1` must have the same valid row/col.\n        - Scalar type must match the Tile data type.\n\n    - **Valid region**:\n        - The op uses `dst.GetValidRow()` / `dst.GetValidCol()` as the iteration domain.",
+  "cpp_intrinsic": "template <typename TileData, typename... WaitEvents>\nPTO_INST RecordEvent TSUBSC(TileData& dst, TileData& src0, typename TileData::DType scalar, TileData& src1,\n                            WaitEvents&... events);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\n\nusing namespace pto;\n\nvoid example() {\n  using TileT = Tile<TileType::Vec, float, 16, 16>;\n  TileT a, b, out;\n  TSUBSC(out, a, 2.0f, b);\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal operand tuples, unsupported types, invalid layout combinations, or unsupported target-profile modes are rejected by the verifier or by the selected backend instruction set.\n    - Programs must not rely on behavior outside the documented legal domain of this operation, even if one backend currently accepts it.",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Tile Scalar And Immediate"
+  ],
+  "mnemonic": "TSUBSC",
+  "name": "pto.tsubsc",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/tile/ops/tile-scalar-and-immediate/tsubsc.md"
+  ],
+  "summary": "Elementwise fused op: `src0 - scalar + src1`.",
+  "syntax": "%dst = tsubsc %src0, %scalar, %src1 : !pto.tile<...>, f32, !pto.tile<...>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - **Implementation checks (A2A3)**:\n        - `TileData::DType` must be one of: `int32_t`, `int16_t`, `half`, `float`.\n        - Tile layout must be row-major (`TileData::isRowMajor`).\n\n    - **Implementation checks (A5)**:\n        - `TileData::DType` must be one of: `int32_t`, `int16_t`, `half`, `float`.\n        - Tile layout must be row-major (`TileData::isRowMajor`)."
+}

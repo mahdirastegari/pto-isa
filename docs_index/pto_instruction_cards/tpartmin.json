@@ -1,0 +1,23 @@
+{
+  "category": "Irregular And Complex",
+  "constraints": "!!! warning \"Constraints\"\n    ### General constraints / checks\n\n    - `dst`, `src0`, and `src1` must use the same element type.\n\n    - The destination valid region defines the result domain.\n\n    - For each element in the destination valid region:\n      - if both inputs are valid, the instruction applies the elementwise minimum;\n      - if only one input is valid, the result copies that input value.\n\n    - If `dst` has a zero valid region, the instruction returns early.\n\n    - Supported partial-validity patterns require at least one source tile to have a valid region exactly equal to `dst`, while the other source tile's valid region must not exceed `dst` in either dimension.\n\n    - Supported element types: `int32_t`, `int16_t`, `half`, `float`.\n\n    - Supported element types: `int8_t`, `uint8_t`, `int16_t`, `uint16_t`, `int32_t`, `uint32_t`, `half`, `bfloat16_t`, `float`.",
+  "cpp_intrinsic": "template <typename TileDataDst, typename TileDataSrc0, typename TileDataSrc1, typename... WaitEvents>\nPTO_INST RecordEvent TPARTMIN(TileDataDst &dst, TileDataSrc0 &src0, TileDataSrc1 &src1, WaitEvents &... events);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\n\nusing namespace pto;\n\nvoid example_auto() {\n  using TileT = Tile<TileType::Vec, float, 16, 16>;\n  TileT src0, src1, dst;\n  TPARTMIN(dst, src0, src1);\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal operand tuples, unsupported types, invalid layout combinations, or unsupported target-profile modes are rejected by the verifier or by the selected backend instruction set.\n    - Programs must not rely on behavior outside the documented legal domain of this operation, even if one backend currently accepts it.",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Irregular And Complex"
+  ],
+  "mnemonic": "TPARTMIN",
+  "name": "pto.tpartmin",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/tile/ops/irregular-and-complex/tpartmin.md"
+  ],
+  "summary": "Partial elementwise min with handling of mismatched valid regions. On A2/A3 and A5, when only one input is valid at an element, the result copies that input value; on the CPU simulator, the same behavior applies.",
+  "syntax": "%dst = tpartmin %src0, %src1 : !pto.tile<...> -> !pto.tile<...>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - On A2/A3 and A5, handling of validity patterns not explicitly listed above results in undefined behavior; on the CPU simulator, the same behavior applies.\n\n    === \"A2/A3\"\n        - `dst`, `src0`, and `src1` must all be row-major (`isRowMajor`).\n\n    === \"A5\"\n        No additional restriction is documented for this target."
+}

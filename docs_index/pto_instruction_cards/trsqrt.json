@@ -1,0 +1,28 @@
+{
+  "category": "Elementwise Tile Tile",
+  "constraints": "!!! warning \"Constraints\"\n    - **Valid region**:\n        - The op uses `dst.GetValidRow()` / `dst.GetValidCol()` as the iteration domain.\n\n    - **Domain / NaN**:\n        - Behavior is target-defined (e.g., for `src == 0` or negative inputs).",
+  "cpp_intrinsic": "template <typename TileDataDst, typename TileDataSrc, typename... WaitEvents>\nPTO_INST RecordEvent TRSQRT(TileDataDst &dst, TileDataSrc &src, WaitEvents &... events);\n\ntemplate <typename TileDataDst, typename TileDataSrc, typename TileDataTmp, typename... WaitEvents>\nPTO_INST RecordEvent TRSQRT(TileDataDst &dst, TileDataSrc &src, TileDataTmp &tmp, WaitEvents &... events);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\n\nusing namespace pto;\n\nvoid example_auto() {\n  using TileT = Tile<TileType::Vec, float, 16, 16>;\n  TileT src, dst;\n  TRSQRT(dst, src);\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal operand tuples, unsupported types, invalid layout combinations, or unsupported target-profile modes are rejected by the verifier or by the selected backend instruction set.\n    - Programs must not rely on behavior outside the documented legal domain of this operation, even if one backend currently accepts it.",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Elementwise Tile Tile"
+  ],
+  "mnemonic": "TRSQRT",
+  "name": "pto.trsqrt",
+  "operands": [
+    "src",
+    "dst"
+  ],
+  "outputs": [
+    "dst"
+  ],
+  "sources": [
+    "docs/isa/tile/ops/elementwise-tile-tile/trsqrt.md"
+  ],
+  "summary": "Elementwise reciprocal square root.",
+  "syntax": "%dst = trsqrt %src : !pto.tile<...>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - **Implementation checks (NPU)**:\n        - The `tmp` buffer must be at least 32 bytes. When tmp is provided, the high-precision version is executed.\n        - `TileData::DType` must be one of: `float` or `half`;\n        - Tile location must be vector (`TileData::Loc == TileType::Vec`);\n        - Static valid bounds: `TileData::ValidRow <= TileData::Rows` and `TileData::ValidCol <= TileData::Cols`;\n        - Runtime: `src.GetValidRow() == dst.GetValidRow()` and `src.GetValidCol() == dst.GetValidCol()`;\n        - Tile layout must be row-major (`TileData::isRowMajor`)."
+}
