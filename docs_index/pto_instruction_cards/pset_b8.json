@@ -1,0 +1,33 @@
+{
+  "category": "Predicate Generation And Algebra",
+  "constraints": "!!! warning \"Constraints\"\n    - **Pattern token validity**: The pattern token MUST be valid for an 8-bit predicate width. Using a `PAT_VL*` token with N > 8 is **illegal**.\n    - **Predicate context**: This operation produces a fixed-width predicate. Programs that use it in a wider predicate context MUST ensure width compatibility or use pack/unpack operations to adapt.\n    - **No dynamic component**: There are no runtime operands; the result is fully determined by the pattern token.",
+  "cpp_intrinsic": "vector_bool mask = pset_b8(__cce_simd::PAT_VL4);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\nusing namespace pto;\n\nvoid set_all_active(RegBuf<predicate_t>& dst) {\n    PSET_B8(dst, \"PAT_ALL\");\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal if the pattern token is not valid for the `_b8` (8-bit) variant.\n    - Illegal if the pattern token is not supported by the target profile.",
+  "instruction_set_path": [
+    "10. Scalar And Control Reference",
+    "Predicate Generation And Algebra"
+  ],
+  "mnemonic": "PSET_B8",
+  "name": "pto.pset_b8",
+  "operands": [
+    "Pattern",
+    "PAT_ALL",
+    "PAT_ALLF",
+    "PAT_VL1",
+    "PAT_VL2",
+    "PAT_H",
+    "PAT_Q"
+  ],
+  "outputs": [
+    "mask"
+  ],
+  "sources": [
+    "docs/isa/scalar/ops/predicate-generation-and-algebra/pset-b8.md"
+  ],
+  "summary": "Construct an 8-bit predicate mask from a compile-time pattern token.",
+  "syntax": "%mask = pto.pset_b8 \"PATTERN\" : !pto.mask<b8>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    | Aspect | CPU Sim | A2/A3 | A5 |\n    |--------|:-------:|:------:|:--:|\n    | All pattern tokens | Simulated | Supported | Supported |\n    | 8-bit predicate width | Supported | Supported | Supported |"
+}

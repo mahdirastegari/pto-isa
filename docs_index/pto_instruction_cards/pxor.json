@@ -1,0 +1,29 @@
+{
+  "category": "Predicate Generation And Algebra",
+  "constraints": "!!! warning \"Constraints\"\n    - **Operand widths**: All predicate operands MUST have the same width.",
+  "cpp_intrinsic": "vector_bool dst;\nvector_bool src0;\nvector_bool src1;\nvector_bool mask;\npxor(dst, src0, src1, mask);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\nusing namespace pto;\n\nvoid invert_with_mask(RegBuf<predicate_t>& dst,\n                      const RegBuf<predicate_t>& to_invert,\n                      const RegBuf<predicate_t>& mask) {\n    // dst = mask XOR to_invert (inverts to_invert where mask is 1)\n    PXOR(dst, mask, to_invert, mask);\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal if predicate operand widths are not consistent.",
+  "instruction_set_path": [
+    "10. Scalar And Control Reference",
+    "Predicate Generation And Algebra"
+  ],
+  "mnemonic": "PXOR",
+  "name": "pto.pxor",
+  "operands": [
+    "src0",
+    "src1",
+    "mask"
+  ],
+  "outputs": [
+    "dst"
+  ],
+  "sources": [
+    "docs/isa/scalar/ops/predicate-generation-and-algebra/pxor.md"
+  ],
+  "summary": "Bitwise XOR of two predicates.",
+  "syntax": "%dst = pto.pxor %src0, %src1, %mask : !pto.mask<G>, !pto.mask<G>, !pto.mask<G> -> !pto.mask<G>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    | Aspect | CPU Sim | A2/A3 | A5 |\n    |--------|:-------:|:------:|:--:|\n    | Bitwise XOR | Simulated | Supported | Supported |"
+}

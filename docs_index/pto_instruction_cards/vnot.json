@@ -1,0 +1,26 @@
+{
+  "category": "Unary Vector Instructions",
+  "constraints": "!!! warning \"Constraints\"\n    Integer element types only.",
+  "cpp_intrinsic": "",
+  "examples": [
+    "for (int i = 0; i < N; i++)\n    dst[i] = ~src[i];"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - The verifier rejects illegal operand shapes, unsupported element types, and attribute combinations that are not valid for the selected instruction set or target profile.\n    - Any additional illegality stated in the constraints section is also part of the contract.",
+  "instruction_set_path": [
+    "9. Vector Instruction Reference",
+    "Unary Vector Instructions"
+  ],
+  "mnemonic": "VNOT",
+  "name": "pto.vnot",
+  "operands": [
+    "input",
+    "mask"
+  ],
+  "outputs": [],
+  "sources": [
+    "docs/isa/vector/ops/unary-vector-ops/vnot.md"
+  ],
+  "summary": "`%result` holds the lane-wise bitwise inversion.",
+  "syntax": "vnot %result, %input, %mask",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - Documented A5 coverage: `all integer types`.\n    - A5 is the most detailed concrete profile in the current manual; CPU simulation and A2/A3-class targets may support narrower subsets or emulate the behavior while preserving the visible PTO contract.\n    - Code that depends on an instruction-set-specific type list, distribution mode, or fused form should treat that dependency as target-profile-specific unless the PTO manual states cross-target portability explicitly."
+}

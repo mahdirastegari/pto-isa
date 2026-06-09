@@ -1,0 +1,30 @@
+{
+  "category": "Vector-Scalar Instructions",
+  "constraints": "!!! warning \"Constraints\"\n    - Borrow-chain forms are defined for integer element types.\n    - `%lhs`, `%rhs`, and `%result` MUST have the same vector width `N` and element type `T`.\n    - `%borrow_in`, `%borrow`, and `%mask` MUST all have width `N`.",
+  "cpp_intrinsic": "",
+  "examples": [
+    "for (int i = 0; i < N; i++) {\n    if (!mask[i]) continue;\n    uint64_t rhs_total = (uint64_t)rhs[i] + borrow_in[i];\n    result[i] = lhs[i] - rhs_total;\n    borrow[i] = lhs[i] < rhs_total;\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - The verifier rejects illegal operand shapes, unsupported element types, and attribute combinations that are not valid for the selected instruction set or target profile.\n    - Any additional illegality stated in the constraints section is also part of the contract.",
+  "instruction_set_path": [
+    "9. Vector Instruction Reference",
+    "Vector-Scalar Instructions"
+  ],
+  "mnemonic": "VSUBCS",
+  "name": "pto.vsubcs",
+  "operands": [
+    "lhs",
+    "rhs",
+    "borrow_in",
+    "mask"
+  ],
+  "outputs": [
+    "borrow"
+  ],
+  "sources": [
+    "docs/isa/vector/ops/vec-scalar-ops/vsubcs.md"
+  ],
+  "summary": "Lane-wise subtract with explicit borrow-in and borrow-out masks.",
+  "syntax": "vsubcs %dst, %borrow_out, %lhs, %rhs, %borrow_in, %mask : !pto.vreg<NxT>, !pto.mask<G>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - Treat this form as an unsigned integer borrow-chain unless a target profile documents a wider legal domain.\n    - A5 is the most detailed concrete profile in the current manual; CPU simulation and A2/A3-class targets may support narrower subsets or emulate the behavior while preserving the visible PTO contract."
+}

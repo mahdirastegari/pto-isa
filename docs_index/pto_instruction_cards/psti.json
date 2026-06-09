@@ -1,0 +1,27 @@
+{
+  "category": "Predicate Load Store",
+  "constraints": "!!! warning \"Constraints\"\n    - **UB address space**: `%ub_ptr` MUST have address space `ub`.\n    - **Offset alignment**: The effective address MUST be 64-bit aligned. That is, `imm * 8` MUST be a multiple of 8. Misaligned effective addresses are **illegal**.\n    - **Immediate range**: The offset immediate MUST fit in the instruction encoding.\u5177\u4f53\u7684\u7acb\u5373\u6570\u8303\u56f4\u7531\u76ee\u6807 Profile \u5b9a\u4e49\uff1b\u8d85\u51fa\u8303\u56f4\u7684\u503c\u4e3a **illegal**\u3002\n    - **Distribution mode**: The `dist` attribute MUST be `\"NORM\"` or `\"PK\"`.\n    - **Predicate width**: The store transfers exactly 64 bits, which MUST match the active element type context.\n    - **Write atomicity**: The 64-bit predicate word is written atomically.",
+  "cpp_intrinsic": "vector_bool src;\n__ubuf__ uint32_t *base;\nint32_t offset = 0;\npsti(src, base, offset, __cce_simd::NORM);\npsti(src, base, offset, __cce_simd::NORM, __cce_simd::POST_UPDATE);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\nusing namespace pto;\n\nvoid store_immediate(RegBuf<predicate_t>& src,\n                     Ptr<ub_space_t, ub_t> base) {\n    // Store predicate to base + 2 * 8 = base + 16 bytes\n    PSTI(src, base, 2, \"NORM\");\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal if `%ub_ptr` is not a UB-space pointer.\n    - Illegal if the effective address is not 64-bit aligned.\n    - Illegal if the immediate offset is out of range for the target profile.\n    - Illegal if `dist` attribute is not `\"NORM\"` or `\"PK\"`.",
+  "instruction_set_path": [
+    "10. Scalar And Control Reference",
+    "Predicate Load Store"
+  ],
+  "mnemonic": "PSTI",
+  "name": "pto.psti",
+  "operands": [
+    "mask",
+    "ub_ptr",
+    "imm"
+  ],
+  "outputs": [],
+  "sources": [
+    "docs/isa/scalar/ops/predicate-load-store/psti.md"
+  ],
+  "summary": "Store the full predicate register to a UB location with an immediate (compile-time constant) byte offset.",
+  "syntax": "pto.psti %mask, %ub_ptr, %imm, \"DIST\" : !pto.mask<G>, !pto.ptr<i64, ub>, i32",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    | Aspect | CPU Sim | A2/A3 | A5 |\n    |--------|:-------:|:------:|:--:|\n    | Immediate-offset predicate store | Simulated | Supported | Supported |\n    | `\"NORM\"` distribution mode | Supported | Supported | Supported |\n    | `\"PK\"` (packed) distribution mode | Not supported | Supported | Supported |\n    | Immediate offset range | Implementation-defined | 0\u2013255 (8-byte units) | 0\u20131023 (8-byte units) |"
+}

@@ -1,0 +1,26 @@
+{
+  "category": "Conversion Ops",
+  "constraints": "!!! warning \"Constraints\"\n    - `pto.vtrc` preserves the vector width and element type of the source.\n    - The selected `ROUND_MODE` MUST be supported by the chosen target profile.\n    - Lowering MUST preserve the lane-wise rounding semantics documented by the selected form.",
+  "cpp_intrinsic": "",
+  "examples": [
+    "%rounded = pto.vtrc %input, \"ROUND_R\" : !pto.vreg<64xf32> -> !pto.vreg<64xf32>"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - The verifier rejects illegal operand shapes, unsupported element types, and unsupported rounding-mode attributes.\n    - Any additional illegality stated in the constraints section is also part of the contract.",
+  "instruction_set_path": [
+    "9. Vector Instruction Reference",
+    "Conversion Ops"
+  ],
+  "mnemonic": "VTRC",
+  "name": "pto.vtrc",
+  "operands": [
+    "input",
+    "ROUND_MODE"
+  ],
+  "outputs": [],
+  "sources": [
+    "docs/isa/vector/ops/conversion-ops/vtrc.md"
+  ],
+  "summary": "Round or truncate each lane while keeping the vector element type unchanged.",
+  "syntax": "vtrc %dst, %src, \"ROUND_MODE\"",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - A5 is the most detailed concrete profile in the current manual; CPU simulation and A2/A3-class targets may support narrower subsets or emulate the behavior while preserving the visible PTO contract.\n    - Code that depends on a specific rounding mode should treat that dependency as target-profile-specific unless the manual states cross-target portability explicitly."
+}

@@ -1,0 +1,29 @@
+{
+  "category": "Binary Vector Instructions",
+  "constraints": "!!! warning \"Constraints\"\n    - **Type match**: `%lhs`, `%rhs`, and `%dst` must have identical element types.\n    - **Width match**: All three registers must have the same vector width `N`.\n    - **Mask width**: `%mask` must have width equal to `N`.\n    - **Active lanes**: Only lanes where mask bit is 1 (true) participate in the addition.\n    - **Inactive lanes**: Destination elements at inactive lanes are not modified by the operation. Programs must not assume any particular value in inactive lanes.",
+  "cpp_intrinsic": "vector_f32 dst;\nvector_f32 src0;\nvector_f32 src1;\nvector_bool mask;\nvadd(dst, src0, src1, mask);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\nusing namespace pto;\n\nMask<64> mask;\nmask.set_all(true);  // predicate all-true\n\nVADD(vdst, va, vb, mask);"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Verifier rejects type mismatches, width mismatches, or mask width mismatches.\n    - Any additional illegality stated in the [Binary Vector Instructions](../../binary-vector-ops.md) instruction set page is part of the contract.",
+  "instruction_set_path": [
+    "9. Vector Instruction Reference",
+    "Binary Vector Instructions"
+  ],
+  "mnemonic": "VADD",
+  "name": "pto.vadd",
+  "operands": [
+    "lhs",
+    "rhs",
+    "mask"
+  ],
+  "outputs": [
+    "dst"
+  ],
+  "sources": [
+    "docs/isa/vector/ops/binary-vector-ops/vadd.md"
+  ],
+  "summary": "Lane-wise addition of two vector registers, producing a result vector register. Only lanes where the predicate mask bit is 1 (active lanes) participate in the computation.",
+  "syntax": "%result = pto.vadd %lhs, %rhs, %mask : (!pto.vreg<NxT>, !pto.vreg<NxT>, !pto.mask<G>) -> !pto.vreg<NxT>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    | Element Type | CPU Simulator | A2/A3 | A5 |\n    |:------------|:-------------:|:------:|:--:|\n    | `f32` | Simulated | Simulated | Supported |\n    | `f16` / `bf16` | Simulated | Simulated | Supported |\n    | `i8`\u2013`i64`, `u8`\u2013`u64` | Simulated | Simulated | Supported |\n\n    A5 is the primary concrete profile for vector instructions. CPU simulation and A2/A3-class targets emulate `pto.v*` operations using scalar loops while preserving the visible PTO contract. Code that depends on specific performance characteristics should treat those as target-profile-specific."
+}

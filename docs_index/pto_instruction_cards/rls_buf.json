@@ -1,0 +1,26 @@
+{
+  "category": "Pipeline Sync",
+  "constraints": "!!! warning \"Constraints\"\n    - **Must match prior acquire**: The calling pipeline MUST have previously acquired the named buffer ID via `get_buf`. Releasing a buffer that was never acquired is **illegal**.\n    - **Release-after-produce order**: `rls_buf` MUST be issued only after the producer has completed all work on the buffer. On A2/A3 and A5: releasing before the data is ready causes the consumer pipeline to read stale or incorrect data; the error may not manifest until later in the pipeline. On CPU simulator: releasing early produces unpredictable data in the consumer.\n    - **One release per acquire**: Each `get_buf` MUST be matched by exactly one `rls_buf` before the next `get_buf` on the same pipeline and buffer ID. Extra releases or missing releases are **illegal**.\n    - **Producer-consumer pairing**: The pipeline named in `rls_buf` is the producer pipeline (the one that wrote to the buffer). The matching `get_buf` names the consumer pipeline.",
+  "cpp_intrinsic": "pipe_t pipe = PIPE_S;\nuint64_t bufId = 0;\nbool mode = true;\nrls_buf(pipe, bufId, mode);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\nusing namespace pto;\n\nvoid load_and_release(int64_t buf_id,\n                      Ptr<ub_space_t, ub_t> gm_src,\n                      Ptr<ub_space_t, ub_t> ub_dst) {\n    // Acquire buffer slot (MTE2 acquires to write)\n    GET_BUF(buf_id, PIPE_MTE2, 0);\n\n    // MTE2 DMA load: GM \u2192 UB\n    COPY_GM_TO_UBUF(gm_src, ub_dst, /* ... */);\n\n    // Release: MTE2 signals Vector that data is ready\n    RLS_BUF(buf_id, PIPE_MTE2, 0);\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal if `%buf_id` was not previously acquired by the calling pipeline.\n    - Illegal if an extra `rls_buf` is issued without a matching prior `get_buf`.\n    - Illegal if `rls_buf` is issued before the producer has finished writing to the buffer (data hazard).",
+  "instruction_set_path": [
+    "10. Scalar And Control Reference",
+    "Pipeline Sync"
+  ],
+  "mnemonic": "RLS_BUF",
+  "name": "pto.rls_buf",
+  "operands": [
+    "buf_id",
+    "mode"
+  ],
+  "outputs": [],
+  "sources": [
+    "docs/isa/scalar/ops/pipeline-sync/rls-buf.md"
+  ],
+  "summary": "Release a buffer slot, implicitly signaling the consuming pipeline to proceed.",
+  "syntax": "pto.rls_buf %buf_id, \"PIPE_*\", %mode : i64, i64",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    | Aspect | CPU Sim | A2/A3 | A5 |\n    |--------|:-------:|:------:|:--:|\n    | Buffer release | Simulated | Supported | Supported |\n    | Implicit set_flag | Simulated | Supported | Supported |\n    | Maximum buffer IDs | Simulated | 32 (global pool) | 32 (global pool) |"
+}

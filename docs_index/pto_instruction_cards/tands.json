@@ -1,0 +1,23 @@
+{
+  "category": "Tile Scalar And Immediate",
+  "constraints": "!!! warning \"Constraints\"\n    - **Valid region**:\n        - The op uses `dst.GetValidRow()` / `dst.GetValidCol()` as the iteration domain.",
+  "cpp_intrinsic": "template <typename TileDataDst, typename TileDataSrc, typename... WaitEvents>\nPTO_INST RecordEvent TANDS(TileDataDst &dst, TileDataSrc &src, typename TileDataDst::DType scalar, WaitEvents &... events);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\n\nusing namespace pto;\n\nvoid example() {\n  using TileDst = Tile<TileType::Vec, uint16_t, 16, 16>;\n  using TileSrc = Tile<TileType::Vec, uint16_t, 16, 16>;\n  TileDst dst;\n  TileSrc src;\n  TANDS(dst, src, 0xffu);\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal operand tuples, unsupported types, invalid layout combinations, or unsupported target-profile modes are rejected by the verifier or by the selected backend instruction set.\n    - Programs must not rely on behavior outside the documented legal domain of this operation, even if one backend currently accepts it.",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Tile Scalar And Immediate"
+  ],
+  "mnemonic": "TANDS",
+  "name": "pto.tands",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/tile/ops/tile-scalar-and-immediate/tands.md"
+  ],
+  "summary": "Elementwise bitwise AND of a tile and a scalar.",
+  "syntax": "%dst = tands %src, %scalar : !pto.tile<...>, i32",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - **Implementation checks (A2A3)**:\n        - Intended for integral element types.\n        - `dst` and `src` must use the same element type.\n        - `dst` and `src` must be vector tiles.\n        - Runtime: `src.GetValidRow() == dst.GetValidRow()` and `src.GetValidCol() == dst.GetValidCol()`.\n        - In manual mode, setting the source tile and destination tile to the same memory is unsupported.\n\n    - **Implementation checks (A5)**:\n        - Intended for integral element types supported by `TEXPANDS` and `TAND`.\n        - `dst` and `src` must use the same element type.\n        - `dst` and `src` must be vector tiles.\n        - In manual mode, setting the source tile and destination tile to the same memory is unsupported."
+}

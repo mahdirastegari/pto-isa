@@ -1,0 +1,30 @@
+{
+  "category": "Matrix And Matrix Vector",
+  "constraints": "!!! warning \"Constraints\"\n    - **Shape constraints**:\n      - `aMatrix.GetValidRow()` = `cMatrix.GetValidRow()` = `M`\n      - `aMatrix.GetValidCol()` = `bMatrix.GetValidRow()` = `K`\n      - `bMatrix.GetValidCol()` = `cMatrix.GetValidCol()` = `N`\n      - Runtime `m/k/n` must be in `[1, 4095]`\n    - **Tile roles**: `aMatrix.Loc == Left`, `bMatrix.Loc == Right`, `cMatrix.Loc == Acc`.\n    - Programs must not assume implicit broadcasting, reshaping, or valid-region repair.",
+  "cpp_intrinsic": "// Basic matmul\ntemplate <typename TileRes, typename TileLeft, typename TileRight, typename... WaitEvents>\nPTO_INST RecordEvent TMATMUL(TileRes &cMatrix, TileLeft &aMatrix, TileRight &bMatrix,\n                            WaitEvents &... events);\n\n// Matmul with accumulator phase\ntemplate <AccPhase Phase, typename TileRes, typename TileLeft, typename TileRight, typename... WaitEvents>\nPTO_INST RecordEvent TMATMUL(TileRes &cMatrix, TileLeft &aMatrix, TileRight &bMatrix,\n                            WaitEvents &... events);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\nusing namespace pto;\n\nvoid example() {\n  using A = TileLeft<half, 16, 16>;\n  using B = TileRight<half, 16, 16>;\n  using C = TileAcc<float, 16, 16>;\n  A a;\n  B b;\n  C c;\n  TMATMUL(c, a, b);\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal operand tuples, unsupported types, invalid layout combinations, or unsupported target-profile modes are rejected by the verifier.\n    - Programs must not rely on behavior outside the documented legal domain.",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Matrix And Matrix Vector"
+  ],
+  "mnemonic": "TMATMUL",
+  "name": "pto.tmatmul",
+  "operands": [
+    "cMatrix",
+    "aMatrix",
+    "bMatrix",
+    "Phase"
+  ],
+  "outputs": [
+    "RecordEvent"
+  ],
+  "sources": [
+    "docs/isa/tile/ops/matrix-and-matrix-vector/tmatmul.md"
+  ],
+  "summary": "Matrix multiply (GEMM) on tile operands, producing a result in an accumulator tile.",
+  "syntax": "%acc = tmatmul %a, %b : (!pto.tile<...>, !pto.tile<...>) -> !pto.tile<...>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    **A2/A3**:\n    - Supported `(CType, AType, BType)` triples:\n      - `(int32_t, int8_t, int8_t)`\n      - `(float, half, half)`\n      - `(float, float, float)`\n      - `(float, bfloat16_t, bfloat16_t)`\n    - Static shape: `TileLeft::Rows == TileRes::Rows`, `TileLeft::Cols == TileRight::Rows`, `TileRight::Cols == TileRes::Cols`.\n\n    **A5**:\n    - Accumulator type: `int32_t` or `float`.\n    - If `int32_t`: `AType == int8_t` and `BType == int8_t`.\n    - If `float`: supports `half/bfloat16_t/float` and selected fp8 pairs.\n    - Fractal/layout constraints:\n      - Left: `Loc == Left`, `!isRowMajor`, `SFractal == RowMajor`\n      - Right: `Loc == Right`, `isRowMajor`, `SFractal == ColMajor`\n      - Acc: `Loc == Acc`, `!isRowMajor`, `SFractal == RowMajor`"
+}

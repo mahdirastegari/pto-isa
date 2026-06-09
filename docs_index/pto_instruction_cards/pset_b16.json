@@ -1,0 +1,33 @@
+{
+  "category": "Predicate Generation And Algebra",
+  "constraints": "!!! warning \"Constraints\"\n    - **Pattern token validity**: The pattern token MUST be valid for a 16-bit predicate width. Using a `PAT_VL*` token with N > 16 is **illegal**.\n    - **Predicate context**: This operation produces a fixed-width predicate. Programs that use it in a wider context MUST use pack/unpack to adapt.",
+  "cpp_intrinsic": "vector_bool mask = pset_b16(__cce_simd::PAT_VL8);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\nusing namespace pto;\n\nvoid set_all_active(RegBuf<predicate_t>& dst) {\n    PSET_B16(dst, \"PAT_ALL\");\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal if the pattern token is not valid for the `_b16` (16-bit) variant.\n    - Illegal if the pattern token is not supported by the target profile.",
+  "instruction_set_path": [
+    "10. Scalar And Control Reference",
+    "Predicate Generation And Algebra"
+  ],
+  "mnemonic": "PSET_B16",
+  "name": "pto.pset_b16",
+  "operands": [
+    "Pattern",
+    "PAT_ALL",
+    "PAT_ALLF",
+    "PAT_H",
+    "PAT_Q",
+    "PAT_M3",
+    "PAT_M4"
+  ],
+  "outputs": [
+    "mask"
+  ],
+  "sources": [
+    "docs/isa/scalar/ops/predicate-generation-and-algebra/pset-b16.md"
+  ],
+  "summary": "Construct a 16-bit predicate mask from a compile-time pattern token.",
+  "syntax": "%mask = pto.pset_b16 \"PATTERN\" : !pto.mask<b16>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    | Aspect | CPU Sim | A2/A3 | A5 |\n    |--------|:-------:|:------:|:--:|\n    | All pattern tokens | Simulated | Supported | Supported |\n    | 16-bit predicate width | Supported | Supported | Supported |"
+}

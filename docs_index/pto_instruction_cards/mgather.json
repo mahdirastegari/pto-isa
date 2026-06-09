@@ -1,0 +1,23 @@
+{
+  "category": "Memory And Data Movement",
+  "constraints": "The constraints below are split into target-specific sections so each backend lists exactly what its implementation enforces. Symbols that are common across targets (`T = TileDst::DType`, `TIdx = TileIdx::DType`) are reused.\n\n### Tile Constraints (CPU)\n\n**Supported data types:**\n\n- `dst` / `src` element type must be one of: `int8_t`, `uint8_t`, `int16_t`, `uint16_t`, `int32_t`, `uint32_t`, `half`, `bfloat16_t`, `float`.\n- On AICore targets (CPU simulator compiled with `__CCE_AICORE__`), `float8_e4m3_t` and `float8_e5m2_t` are also supported.\n- `indexes` element type must be `int32_t` or `uint32_t`.\n\n**Tile and memory types:**\n\n- `dst` must be a vector tile (`TileType::Vec`).\n- `indexes` must be a vector tile (`TileType::Vec`).\n- `dst` and `indexes` must use row-major layout (`BLayout::RowMajor + SLayout::NoneBox`).\n- `src` must be a `GlobalTensor` in GM memory.\n- `src` must use `Layout::ND`.\n\n**Shape constraints:**\n\n- `dst.Rows == indexes.Rows` (the index tile and destination tile share the row count).\n- `indexes` must be shaped as `[N, 1]` for row-indexed gather or `[N, M]` for element-indexed gather.\n- `dst` row width must be 32-byte aligned, that is, `dst.Cols * sizeof(TileDst::DType)` must be a multiple of 32.\n- `src` static shape must satisfy `Shape<1, 1, 1, TableRows, RowWidth>`.\n\n**Index interpretation:**\n\n- Index interpretation is target-defined. The CPU simulator treats indices as **linear element indices into `src.data()`** and writes `dst.data()[dstOff] = src.data()[idx]` for every `(r, c)` in the destination valid region \u2014 equivalent to `Coalesce::Elem` semantics, regardless of the index tile shape.\n- The CPU simulator does not enforce bounds checks on `indexes`. Out-of-range indices read whatever `src.data() + idx` returns and are target-defined.\n- The simulator does **not** model the `Coalesce` or `GatherOOB` template parameters at the CPU intrinsic surface; out-of-bounds handling is the caller's responsibility on CPU.\n\n**Header-level enforcement.** The CPU header (`include/pto/cpu/MGatherScatter.hpp`) static-asserts only the minimum closure rules: `std::is_integral_v<TileInd::DType>` for the index dtype and `sizeof(TileDst::DType) == sizeof(GlobalData::DType)` for byte-wise compatibility. The dtype / shape / layout constraints above are the **PTO ABI contract** \u2014 callers are expected to honor them so the same kernel source compiles and runs un",
+  "cpp_intrinsic": "template <typename TileDst, typename GlobalData, typename TileInd, typename... WaitEvents>\nPTO_INST RecordEvent MGATHER(TileDst &dst, GlobalData &src, TileInd &indexes, WaitEvents &... events);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\n\nusing namespace pto;\n\nvoid example_auto() {\n  using DstT = Tile<TileType::Vec, float, 16, 16>;\n  using IdxT = Tile<TileType::Vec, int32_t, 16, 16>;\n  DstT dst;\n  IdxT idx;\n  // src is a GlobalTensor in GM\n  MGATHER(dst, src, idx);\n}"
+  ],
+  "illegal_cases": "",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Memory And Data Movement"
+  ],
+  "mnemonic": "MGATHER",
+  "name": "pto.mgather",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/tile/ops/memory-and-data-movement/mgather.md"
+  ],
+  "summary": "Documented PTO instruction `pto.mgather`.",
+  "syntax": "",
+  "target_profile_restrictions": ""
+}

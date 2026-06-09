@@ -1,0 +1,25 @@
+{
+  "category": "Pipeline Sync",
+  "constraints": "!!! warning \"Constraints\"\n    - **A2A3 only**: `wait_flag_dev` is only available on the A2A3 profile.\n    - **SU-level blocking**: Unlike `wait_flag` (intra-core) which only stalls the named destination pipeline, `wait_flag_dev` stalls **all** pipelines on the core. This is more restrictive than A5's `wait_intra_core`.\n    - **Semaphore pool**: The pool has 16 physical semaphore IDs per cluster with a 4-bit counter (0\u201315). The wait unblocks when the counter reaches zero. On A2/A3: if `wait_flag_dev` is called when the counter is already zero, the call returns immediately without error. On A5: this operation is not available; use `wait_intra_core` instead.\n    - **Event must be set**: Waiting on an event that was never set by a matching remote `set_cross_core` is **illegal**.",
+  "cpp_intrinsic": "pipe_t pipe = PIPE_MTE2;\nint64_t flagId = 0;\nwait_flag_dev(pipe, flagId);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\nusing namespace pto;\n\n// Cube: broadcast to both AIV subblocks\nSET_CROSS_CORE(/* core_id */ 0, /* event_id */ 0);\n\n// AIV0: do work, then signal\n// AIV1: do work, then signal\n\n// Cube: block until BOTH AIV0 and AIV1 have signaled (reduce)\nWAIT_FLAG_DEV(/* event_id */ 0);"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal on non-A2A3 profiles.\n    - Illegal if `%event_id` is outside the valid range (0\u201315).\n    - Illegal if the event was never set by a remote core.",
+  "instruction_set_path": [
+    "10. Scalar And Control Reference",
+    "Pipeline Sync"
+  ],
+  "mnemonic": "WAIT_FLAG_DEV",
+  "name": "pto.wait_flag_dev",
+  "operands": [
+    "event_id"
+  ],
+  "outputs": [],
+  "sources": [
+    "docs/isa/scalar/ops/pipeline-sync/wait-flag-dev.md"
+  ],
+  "summary": "Block the entire SU (all pipelines) until a remote core signals an event (A2A3). Uses **mode2 reduce semantics**: one wait unblocks only when **all** subblocks in the cluster have signaled.",
+  "syntax": "pto.wait_flag_dev %event_id : i64",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    | Aspect | CPU Sim | A2/A3 | A5 |\n    |--------|:-------:|:------:|:--:|\n    | `wait_flag_dev` | Not available | Supported | Use `wait_intra_core` |\n    | SU-level blocking | Not applicable | All pipelines blocked | Only named pipe blocked |\n    | Semaphore pool size | Not applicable | 16 IDs, 4-bit counter | 16 IDs, 32-ID address space |\n    | Reduce semantics | Not applicable | One wait unblocks on N signals | One wait per signal |"
+}

@@ -1,0 +1,23 @@
+{
+  "category": "Irregular And Complex",
+  "constraints": "!!! warning \"Constraints\"\n    - **Implementation checks (A5)**:\n        - `DstTile::DType` must be one of: `int32_t`, `uint32_t`.\n        - Tile layout must be row-major (`DstTile::isRowMajor`).\n        - `Rounds` must be either 7 or 10 (default: 10).\n        - `key` and `counter` must not be null.\n    - **Valid region**:\n        - The op uses `dst.GetValidRow()` / `dst.GetValidCol()` as the iteration domain.",
+  "cpp_intrinsic": "template <uint16_t Rounds = 10, typename DstTile>\nPTO_INST void TRANDOM_IMPL(DstTile &dst, TRandomKey &key, TRandomCounter &counter);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\n\nusing namespace pto;\n\nvoid example_auto() {\n  using TileT = Tile<TileType::Vec, uint32_t, 16, 16>;\n  TileT dst;\n  TRandomKey key = {0x01234, 0x56789};\n  TRandomCounter counter = {0, 0, 0, 0};\n  TRANDOM_IMPL(dst, key, counter);\n}"
+  ],
+  "illegal_cases": "",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Irregular And Complex"
+  ],
+  "mnemonic": "TRANDOM",
+  "name": "pto.trandom",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/tile/ops/irregular-and-complex/trandom.md"
+  ],
+  "summary": "Documented PTO instruction `pto.trandom`.",
+  "syntax": "",
+  "target_profile_restrictions": ""
+}

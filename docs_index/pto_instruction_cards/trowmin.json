@@ -1,0 +1,23 @@
+{
+  "category": "Reduce And Expand",
+  "constraints": "!!! warning \"Constraints\"\n    ### General constraints / checks\n\n    - `dst` and `src` must both be `TileType::Vec`.\n\n    - `src` must use standard ND layout: row-major and non-fractal (`BLayout::RowMajor`, `SLayout::NoneBox`).\n\n    - `dst` must use one of the following non-fractal layouts:\n      - ND layout (`BLayout::RowMajor`, `SLayout::NoneBox`), or\n      - DN layout with exactly one column (`BLayout::ColMajor`, `SLayout::NoneBox`, `Cols == 1`).\n\n    - `dst` and `src` must use the same element type.\n\n    - Runtime valid-region checks:\n      - `src.GetValidRow() != 0`\n      - `src.GetValidCol() != 0`\n      - `src.GetValidRow() == dst.GetValidRow()`\n\n    - Supported element types: `half`, `float`, `int32_t`, `int16_t`.\n\n    - The implementation accepts both ND output and DN output with `Cols == 1`.\n\n    - Runtime checks follow the shared row-reduce check path:\n      - `src.GetValidRow() != 0`\n      - `src.GetValidCol() != 0`\n      - `src.GetValidRow() == dst.GetValidRow()`\n\n    - The current implementation path passes `tmp` into the backend call, but this document does not add extra `tmp` shape/layout constraints beyond what is explicitly enforced by the checked implementation.",
+  "cpp_intrinsic": "template <typename TileDataOut, typename TileDataIn, typename TileDataTmp, typename... WaitEvents>\nPTO_INST RecordEvent TROWMIN(TileDataOut &dst, TileDataIn &src, TileDataTmp &tmp, WaitEvents &... events);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\n\nusing namespace pto;\n\nvoid example_auto() {\n  using SrcT = Tile<TileType::Vec, float, 16, 16>;\n  using DstT = Tile<TileType::Vec, float, 16, 1, BLayout::ColMajor>;\n  using TmpT = Tile<TileType::Vec, float, 16, 16>;\n  SrcT src;\n  DstT dst;\n  TmpT tmp;\n  TROWMIN(dst, src, tmp);\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal operand tuples, unsupported types, invalid layout combinations, or unsupported target-profile modes are rejected by the verifier or by the selected backend instruction set.\n    - Programs must not rely on behavior outside the documented legal domain of this operation, even if one backend currently accepts it.",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Reduce And Expand"
+  ],
+  "mnemonic": "TROWMIN",
+  "name": "pto.trowmin",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/tile/ops/reduce-and-expand/trowmin.md"
+  ],
+  "summary": "Reduce each row by taking the minimum across columns.",
+  "syntax": "%dst = trowmin %src : !pto.tile<...> -> !pto.tile<...>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - The intrinsic signature requires an explicit `tmp` operand.\n\n    ### A2A3 implementation checks"
+}

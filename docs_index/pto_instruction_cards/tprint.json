@@ -1,0 +1,23 @@
+{
+  "category": "Irregular And Complex",
+  "constraints": "!!! warning \"Constraints\"\n    - **Supported element type**:\n        - Floating-point: `float`, `half`\n        - Signed integers: `int8_t`, `int16_t`, `int32_t`\n        - Unsigned integers: `uint8_t`, `uint16_t`, `uint32_t`\n\n    - **For GlobalTensor**: Layout must be one of `Layout::ND`, `Layout::DN`, or `Layout::NZ`.\n\n    - **For temporary space**: Printing a `Tile` with `TileType::Mat` or `TileType::Acc` requires GM temporary space. The temporary buffer must be at least `TileData::Numel * sizeof(T)`.\n\n    - When `TileType` is `Mat`, the output is formatted according to `Layout::ND`; other layouts may appear misaligned.",
+  "cpp_intrinsic": "// For printing GlobalTensor or Vec-type Tile\ntemplate <typename TileData>\nPTO_INST void TPRINT(TileData &src);\n\n// For printing Acc-type Tile and Mat-type Tile (Mat printing is currently A3-only)\ntemplate <typename TileData, typename GlobalData>\nPTO_INTERNAL void TPRINT(TileData &src, GlobalData &tmp);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\n\nPTO_INTERNAL void DebugTile(__gm__ float *src) {\n  using ValidSrcShape = TileShape2D<float, 16, 16>;\n  using NDSrcShape = BaseShape2D<float, 32, 32>;\n  using GlobalDataSrc = GlobalTensor<float, ValidSrcShape, NDSrcShape>;\n  GlobalDataSrc srcGlobal(src);\n\n  using srcTileData = Tile<TileType::Vec, float, 16, 16>;\n  srcTileData srcTile;\n  TASSIGN(srcTile, 0x0);\n\n  TLOAD(srcTile, srcGlobal);\n  TPRINT(srcTile);\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal operand tuples, unsupported types, invalid layout combinations, or unsupported target-profile modes are rejected by the verifier or by the selected backend instruction set.\n    - Programs must not rely on behavior outside the documented legal domain of this operation, even if one backend currently accepts it.",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Irregular And Complex"
+  ],
+  "mnemonic": "TPRINT",
+  "name": "pto.tprint",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/tile/ops/irregular-and-complex/tprint.md"
+  ],
+  "summary": "Debug/print elements from a tile. On A2/A3/A5, output is emitted via `cce::printf` to the device-to-host debug channel; on the CPU simulator, output is printed to stdout.",
+  "syntax": "tprint %src : !pto.tile<...> | !pto.global<...>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - A5 does not yet support printing `TileType::Mat`."
+}

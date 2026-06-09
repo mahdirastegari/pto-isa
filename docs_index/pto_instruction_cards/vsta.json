@@ -1,0 +1,23 @@
+{
+  "category": "Vector Load Store",
+  "constraints": "!!! warning \"Constraints\"\n    The flush address MUST match the post-updated address expected by the\n      preceding unaligned-store stream. After the flush, the corresponding store\n      alignment state is consumed.",
+  "cpp_intrinsic": "",
+  "examples": [
+    "pto.vsta %value, %dest[%offset] : !pto.align, !pto.ptr<T, ub>, index"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - It is illegal to use addresses outside the required UB-visible space or to violate the alignment/distribution contract of the selected form.\n    - Masked-off lanes or inactive blocks do not make an otherwise-illegal address valid unless the operation text explicitly says so.\n    - Any additional illegality stated in the constraints section is also part of the contract.",
+  "instruction_set_path": [
+    "9. Vector Instruction Reference",
+    "Vector Load Store"
+  ],
+  "mnemonic": "VSTA",
+  "name": "pto.vsta",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/vector/ops/vector-load-store/vsta.md"
+  ],
+  "summary": "Flush alignment state to memory.",
+  "syntax": "vsta %value, %dest[%offset]",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - A5 is the most detailed concrete profile in the current manual; CPU simulation and A2/A3-class targets may support narrower subsets or emulate the behavior while preserving the visible PTO contract.\n    - Code that depends on an instruction-set-specific type list, distribution mode, or fused form should treat that dependency as target-profile-specific unless the PTO manual states cross-target portability explicitly."
+}

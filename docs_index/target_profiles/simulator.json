@@ -1,0 +1,8 @@
+{
+  "device": "simulator",
+  "cpu_sim_available": true,
+  "npu_available": false,
+  "profiler_available": false,
+  "supported_dtypes": ["fp16", "fp32", "int8", "bf16"],
+  "notes": ["Default fallback profile used when no Ascend hardware is discovered."]
+}

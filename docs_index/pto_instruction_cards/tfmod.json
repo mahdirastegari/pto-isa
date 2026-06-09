@@ -1,0 +1,28 @@
+{
+  "category": "Elementwise Tile Tile",
+  "constraints": "!!! warning \"Constraints\"\n    - The op iterates over `dst.GetValidRow()` / `dst.GetValidCol()`.\n\n    - Division-by-zero behavior is target-defined; the CPU simulator asserts in debug builds.",
+  "cpp_intrinsic": "template <typename TileDataDst, typename TileDataSrc0, typename TileDataSrc1, typename... WaitEvents>\nPTO_INST RecordEvent TFMOD(TileDataDst &dst, TileDataSrc0 &src0, TileDataSrc1 &src1, WaitEvents &... events);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\n\nusing namespace pto;\n\nvoid example() {\n  using TileT = Tile<TileType::Vec, int32_t, 16, 16>;\n  TileT out, a, b;\n  TFMOD(out, a, b);\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal operand tuples, unsupported types, invalid layout combinations, or unsupported target-profile modes are rejected by the verifier or by the selected backend instruction set.\n    - Programs must not rely on behavior outside the documented legal domain of this operation, even if one backend currently accepts it.",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Elementwise Tile Tile"
+  ],
+  "mnemonic": "TFMOD",
+  "name": "pto.tfmod",
+  "operands": [
+    "src0",
+    "src1"
+  ],
+  "outputs": [
+    "dst"
+  ],
+  "sources": [
+    "docs/isa/tile/ops/elementwise-tile-tile/tfmod.md"
+  ],
+  "summary": "Elementwise fmod of two tiles.",
+  "syntax": "%dst = tfmod %src0, %src1 : !pto.tile<...>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - `pto.tfmod` preserves PTO-visible semantics across CPU simulation, A2/A3-class targets, and A5-class targets, but concrete support subsets may differ by profile.\n\n    - Portable code must rely only on the documented type, layout, shape, and mode combinations that the selected target profile guarantees."
+}

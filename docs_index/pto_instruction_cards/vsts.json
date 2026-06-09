@@ -1,0 +1,23 @@
+{
+  "category": "Vector Load Store",
+  "constraints": "!!! warning \"Constraints\"\n    The effective destination address MUST satisfy the alignment rule of the\n      selected store mode. Narrowing/packing modes may only preserve a subset of the\n      source bits. Merge-channel modes reinterpret the source vector as channel\n      planes and interleave them on store.",
+  "cpp_intrinsic": "",
+  "examples": [
+    "pto.vsts %v, %ub[%offset], %mask {dist = \"NORM_B32\"} : !pto.vreg<64xf32>, !pto.ptr<f32, ub>, !pto.mask<b32>"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - It is illegal to use addresses outside the required UB-visible space or to violate the alignment/distribution contract of the selected form.\n    - Masked-off lanes or inactive blocks do not make an otherwise-illegal address valid unless the operation text explicitly says so.\n    - Any additional illegality stated in the constraints section is also part of the contract.",
+  "instruction_set_path": [
+    "9. Vector Instruction Reference",
+    "Vector Load Store"
+  ],
+  "mnemonic": "VSTS",
+  "name": "pto.vsts",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/vector/ops/vector-load-store/vsts.md"
+  ],
+  "summary": "Vector store with distribution mode.",
+  "syntax": "vsts %value, %dest[%offset], %mask {dist = \"DIST\"}",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - A5 is the most detailed concrete profile in the current manual; CPU simulation and A2/A3-class targets may support narrower subsets or emulate the behavior while preserving the visible PTO contract.\n    - Code that depends on an instruction-set-specific type list, distribution mode, or fused form should treat that dependency as target-profile-specific unless the PTO manual states cross-target portability explicitly."
+}

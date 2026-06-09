@@ -1,0 +1,23 @@
+{
+  "category": "Tile Scalar And Immediate",
+  "constraints": "!!! warning \"Constraints\"\n    - **Common constraints**:\n        - Tile location must be vector (`TileData::Loc == TileType::Vec`).\n        - Static valid bounds: `TileData::ValidRow <= TileData::Rows` and `TileData::ValidCol <= TileData::Cols`.\n        - Runtime: `src0` and `dst` must have the same valid row/col.\n\n    - **Valid region**:\n        - The op uses `dst.GetValidRow()` / `dst.GetValidCol()` as the iteration domain.\n\n    - **Comparison modes**:\n        - Supports `CmpMode::EQ`, `CmpMode::NE`, `CmpMode::LT`, `CmpMode::GT`, `CmpMode::LE`, `CmpMode::GE`.",
+  "cpp_intrinsic": "template <typename TileDataDst, typename TileDataSrc0, typename T, typename... WaitEvents>\nPTO_INST RecordEvent TCMPS(TileDataDst& dst, TileDataSrc0& src0, T src1, CmpMode cmpMode, WaitEvents&... events);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\n\nusing namespace pto;\n\nvoid example_auto() {\n  using SrcT = Tile<TileType::Vec, float, 16, 16>;\n  using DstT = Tile<TileType::Vec, uint8_t, 16, 32, BLayout::RowMajor, -1, -1>;\n  SrcT src;\n  DstT dst(16, 2);\n  TCMPS(dst, src, 0.0f, CmpMode::GT);\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal operand tuples, unsupported types, invalid layout combinations, or unsupported target-profile modes are rejected by the verifier or by the selected backend instruction set.\n    - Programs must not rely on behavior outside the documented legal domain of this operation, even if one backend currently accepts it.",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Tile Scalar And Immediate"
+  ],
+  "mnemonic": "TCMPS",
+  "name": "pto.tcmps",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/tile/ops/tile-scalar-and-immediate/tcmps.md"
+  ],
+  "summary": "Compare a tile against a scalar and write per-element comparison results.",
+  "syntax": "%dst = tcmps %src, %scalar {cmpMode = #pto.cmp<EQ>} : !pto.tile<...> -> !pto.tile<...>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - **Implementation checks (A2A3)**:\n        - `TileData::DType` must be one of: `int32_t`, `float`, `half`, `uint16_t`, `int16_t`.\n        - Tile layout must be row-major (`TileData::isRowMajor`).\n\n    - **Implementation checks (A5)**:\n        - `TileData::DType` must be one of: `int32_t`, `float`, `half`, `uint16_t`, `int16_t`.\n        - Tile layout must be row-major (`TileData::isRowMajor`)."
+}

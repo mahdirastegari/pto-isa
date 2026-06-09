@@ -1,0 +1,23 @@
+{
+  "category": "Vector Load Store",
+  "constraints": "!!! warning \"Constraints\"\n    Only `b8`, `b16`, and `b32` element sizes are supported. The index vector\n      must use a supported integer element type and layout for this instruction set.\n      Each computed address MUST be element-aligned. If two or more indices alias,\n      only one write is guaranteed and the winning lane is **undefined behavior on A2/A3** (scatter aliases are illegal and must not occur); on A5 the lane with the numerically lowest index wins the write.",
+  "cpp_intrinsic": "",
+  "examples": [
+    "for (int i = 0; i < active_lanes; i++)\n    UB[base + offsets[i] * sizeof(T)] = src[i];"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - It is illegal to use addresses outside the required UB-visible space or to violate the alignment/distribution contract of the selected form.\n    - Masked-off lanes or inactive blocks do not make an otherwise-illegal address valid unless the operation text explicitly says so.\n    - Any additional illegality stated in the constraints section is also part of the contract.",
+  "instruction_set_path": [
+    "9. Vector Instruction Reference",
+    "Vector Load Store"
+  ],
+  "mnemonic": "VSCATTER",
+  "name": "pto.vscatter",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/vector/ops/vector-load-store/vscatter.md"
+  ],
+  "summary": "Indexed scatter to UB.",
+  "syntax": "vscatter %value, %dest, %offsets, %active_lanes",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - A5 is the most detailed concrete profile in the current manual; CPU simulation and A2/A3-class targets may support narrower subsets or emulate the behavior while preserving the visible PTO contract.\n    - Code that depends on an instruction-set-specific type list, distribution mode, or fused form should treat that dependency as target-profile-specific unless the PTO manual states cross-target portability explicitly."
+}

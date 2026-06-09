@@ -1,0 +1,28 @@
+{
+  "category": "Sync And Config",
+  "constraints": "!!! warning \"Constraints\"\n    Enforced by `SUBVIEW_IMPL`:\n\n    - **Tile type must match**: `TileDataSrc::Loc == TileDataDst::Loc`\n    - **Both tiles must have the same static capacity**: `TileDataSrc::Rows == TileDataDst::Rows` and `TileDataSrc::Cols == TileDataDst::Cols`\n    - **Both tiles must have the same BLayout**: `TileDataSrc::BFractal == TileDataDst::BFractal`\n    - **Source valid region must contain destination**: The source tile's `validRow` (`validCol`) must be at least as big as the destination tile's `validRow` (`validCol`)",
+  "cpp_intrinsic": "template <typename TileDataDst, typename TileDataSrc, typename... WaitEvents>\nPTO_INST RecordEvent SUBVIEW(TileDataDst &dst, TileDataSrc &src, uint16_t rowIdx, uint16_t colIdx, WaitEvents&... events);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\nusing namespace pto;\n\nvoid example() {\n  using Src = Tile<TileType::Vec, float, 4, 64, BLayout::RowMajor, 4, 64>;\n  using Dst = Tile<TileType::Vec, float, 4, 64, BLayout::RowMajor, 2, 32>;\n\n  Src src;\n  Dst dst0, dst1, dst2, dst3;\n\n  // Split into four 2x32 subtiles\n  SUBVIEW(dst0, src, 0, 0);\n  SUBVIEW(dst1, src, 0, 32);\n  SUBVIEW(dst2, src, 2, 0);\n  SUBVIEW(dst3, src, 2, 32);\n}"
+  ],
+  "illegal_cases": "",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Sync And Config"
+  ],
+  "mnemonic": "SUBVIEW",
+  "name": "pto.subview",
+  "operands": [
+    "src",
+    "rowIdx",
+    "colIdx",
+    "dst"
+  ],
+  "outputs": [],
+  "sources": [
+    "docs/isa/tile/ops/sync-and-config/subview.md"
+  ],
+  "summary": "Reinterpret a tile as a subtile of another tile. This establishes a view relationship without copying data.",
+  "syntax": "%dst = pto.subview %src, %row_idx, %col_idx : !pto.tile<...>, i16, i16",
+  "target_profile_restrictions": ""
+}

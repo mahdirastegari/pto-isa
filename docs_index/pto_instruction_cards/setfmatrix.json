@@ -1,0 +1,25 @@
+{
+  "category": "Sync And Config",
+  "constraints": "!!! warning \"Constraints\"\n    - The tile must be a valid matrix tile type (`TileType::Mat`, `TileType::Left`, `TileType::Right`, or `TileType::Acc`) as required by the target profile.\n    - On A5, the tile's shape must be compatible with the FMATRIX slot dimensions.\n    - This instruction should be ordered before dependent matrix multiply operations (`pto.tmatmul`, `pto.tgemv`, etc.).",
+  "cpp_intrinsic": "template <typename TileData, typename... WaitEvents>\nPTO_INST RecordEvent SETFMATRIX(TileData &tile, WaitEvents &... events);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\nusing namespace pto;\n\nvoid example() {\n  Tile<TileType::Mat, float, 16, 16> matTile;\n  SETFMATRIX(matTile);\n}"
+  ],
+  "illegal_cases": "",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Sync And Config"
+  ],
+  "mnemonic": "SETFMATRIX",
+  "name": "pto.setfmatrix",
+  "operands": [
+    "tile"
+  ],
+  "outputs": [],
+  "sources": [
+    "docs/isa/tile/ops/sync-and-config/setfmatrix.md"
+  ],
+  "summary": "Configure the FMATRIX (fast matrix) engine mode and address. This instruction programs the FMATRIX control registers and binds a tile to a specific FMATRIX slot for subsequent matrix multiply or convolution operations.",
+  "syntax": "pto.setfmatrix %tile : !pto.tile<...>",
+  "target_profile_restrictions": ""
+}

@@ -1,0 +1,23 @@
+{
+  "category": "Reduce And Expand",
+  "constraints": "!!! warning \"Constraints\"\n    ### General constraints / checks\n\n    - `dst` and `src` must be `TileType::Vec`.\n\n    - Supported source element types: `half`, `float`, `int32_t`, `int16_t`.\n\n    - Supported destination element types: `uint32_t`, `int32_t`.\n\n    - `src` must use standard ND layout: row-major and non-fractal (`BLayout::RowMajor`, `SLayout::NoneBox`).\n\n    - `dst` and `src` must satisfy the shared column-reduce-index check path used by `TColArgMax`.\n\n    - Temporary tile is not used when `srcValidRow <= ElementPerRepeat`, used when `srcValidRow > ElementPerRepeat`.\n\n    - `tmp` tile's columns is the same as `src`.\n\n    - Simply set `tmp` tile size the same as `src` when `src` is small.\n\n    - `tmp` tile's stride can be calculated out based on `src`'s `validRow` using the following formula:\n\n    ```text\n    repeats = ceil(validRow / elementPerRepeat)\n    stride = ceil(repeats * 2 / elementPerBlock) * elementPerBlock + ceil(repeats / elementPerBlock) * elementPerBlock\n    ```\n\n    ### Value+index mode\n\n    - `dstVal` must be a `TileType::Vec` tile with standard ND layout.\n    - `dstVal` element type must match `src`.\n    - 8-bit source element types are not supported by the value+index overload.\n    - `dstVal.GetValidRow() == 1`\n    - `dstVal.GetValidCol() == dstIdx.GetValidCol()`\n    - `dstVal.GetValidCol() == src.GetValidCol()`\n    - For 16-bit source element types, `dstIdx` must use `uint16_t` or `int16_t`.\n    - For 32-bit source element types, `dstIdx` must use `uint32_t` or `int32_t`.",
+  "cpp_intrinsic": "template <typename TileDataOut, typename TileDataIn, typename TileDataTmp, typename... WaitEvents>\nPTO_INST RecordEvent TCOLARGMAX(TileDataOut& dst, TileDataIn& src, TileDataTmp& tmp, WaitEvents&... events);\n\ntemplate <typename TileDataOutVal, typename TileDataOutIdx, typename TileDataIn, typename TileDataTmp,\n          typename... WaitEvents>\nPTO_INST RecordEvent TCOLARGMAX(TileDataOutVal& dstVal, TileDataOutIdx& dstIdx, TileDataIn& src, TileDataTmp& tmp,\n                                WaitEvents&... events);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\n\nusing namespace pto;\n\nvoid example_auto() {\n  using SrcT = Tile<TileType::Vec, float, 16, 16>;\n  using DstT = Tile<TileType::Vec, uint32_t, 1, 16>;\n  using TmpT = Tile<TileType::Vec, float, 16, 16>;\n  SrcT src;\n  DstT dst;\n  TmpT tmp;\n  TCOLARGMAX(dst, src, tmp);\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal operand tuples, unsupported types, invalid layout combinations, or unsupported target-profile modes are rejected by the verifier or by the selected backend instruction set.\n    - Programs must not rely on behavior outside the documented legal domain of this operation, even if one backend currently accepts it.",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Reduce And Expand"
+  ],
+  "mnemonic": "TCOLARGMAX",
+  "name": "pto.tcolargmax",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/tile/ops/reduce-and-expand/tcolargmax.md"
+  ],
+  "summary": "Get the row index of the maximum element for each column. A value+index variant also returns the maximum\nvalue for each column.",
+  "syntax": "%dst = tcolargmax %src : !pto.tile<...> -> !pto.tile<...>\n%dstVal, %dstIdx = tcolargmax %src : !pto.tile<...> -> !pto.tile<...>, !pto.tile<...>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - Runtime checks follow the shared column-reduce check path:\n      - `src.GetValidRow() != 0`\n      - `src.GetValidCol() != 0`\n      - `src.GetValidCol() == dst.GetValidCol()`\n\n    === \"A2/A3\"\n        - `dst` is checked through the shared column-reduce-index path and may use either of these non-fractal layouts:\n          - ND layout with one row (`BLayout::RowMajor`, `Rows == 1`), or\n          - DN layout whose valid row count is 1.\n\n    === \"A5\"\n        - In the checked A5 implementation path, `tmp` is accepted by the interface but not used by `TCOLARGMAX_IMPL`."
+}

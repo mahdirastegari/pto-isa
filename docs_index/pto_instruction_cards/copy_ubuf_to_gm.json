@@ -1,0 +1,30 @@
+{
+  "category": "DMA Copy",
+  "constraints": "!!! warning \"Constraints\"\n    - `nburst(...)` is always required.\n    - Each `loop(...)` group must be provided as a complete triple when present.\n    - `nburst(...)` is the innermost group.\n    - `loop(...)` groups are ordered from inner to outer; the first `loop(...)` group wraps `nburst(...)`, and each additional `loop(...)` group wraps all earlier groups.\n    - `%ub_src` MUST be 32-byte aligned.",
+  "cpp_intrinsic": "",
+  "examples": [
+    "// Two-level outbound transfer: rows x tiles.\npto.mte_ub_gm %ub_in, %gm_out, %len_burst\n  nburst(%rows, %ub_row_stride, %gm_row_stride)\n  loop(%tiles, %ub_tile_stride, %gm_tile_stride)\n  : !pto.ptr<f16, ub>, !pto.ptr<f16, gm>, i64, i64, i64, i64,\n    loop i64, i64, i64"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - The verifier rejects illegal operand shapes, malformed clause groups, and attribute combinations not valid for the selected target profile.\n    - Any additional illegality stated in the constraints section is also part of the contract.",
+  "instruction_set_path": [
+    "10. Scalar And Control Reference",
+    "DMA Copy"
+  ],
+  "mnemonic": "COPY_UBUF_TO_GM",
+  "name": "pto.copy_ubuf_to_gm",
+  "operands": [
+    "Parameter",
+    "ub_src",
+    "gm_dst",
+    "len_burst"
+  ],
+  "outputs": [
+    "None"
+  ],
+  "sources": [
+    "docs/isa/scalar/ops/dma-copy/copy-ubuf-to-gm.md"
+  ],
+  "summary": "Execute a grouped UB\u2192GM DMA transfer. `nburst(...)` defines the innermost repeated burst transfer, and optional `loop(...)` groups add outer repetition levels.",
+  "syntax": "pto.mte_ub_gm %ub_src, %gm_dst, %len_burst\n  nburst(%n_burst, %src_stride, %dst_stride)\n  [loop(%loop_count, %loop_src_stride, %loop_dst_stride)]*\n  : !pto.ptr<T, ub>, !pto.ptr<T, gm>, i64, i64, i64, i64,\n    [loop i64, i64, i64,]*",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - CPU simulation preserves the visible copy contract but may not expose all DMA overlap hazards.\n    - A2/A3 and A5 may narrow supported element sizes, row widths, or cache-control semantics."
+}

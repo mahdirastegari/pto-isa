@@ -1,0 +1,21 @@
+{
+  "category": "Irregular And Complex",
+  "constraints": "!!! warning \"Constraints\"\n    Refer to backend-specific legality checks for data type/layout/location/shape constraints.",
+  "cpp_intrinsic": "",
+  "examples": [],
+  "illegal_cases": "",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Irregular And Complex"
+  ],
+  "mnemonic": "THISTOGRAM",
+  "name": "pto.thistogram",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/tile/ops/irregular-and-complex/thistogram.md"
+  ],
+  "summary": "Documented PTO instruction `pto.thistogram`.",
+  "syntax": "",
+  "target_profile_restrictions": ""
+}

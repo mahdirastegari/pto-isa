@@ -1,0 +1,23 @@
+{
+  "category": "SFU And DSA Instructions",
+  "constraints": "!!! warning \"Constraints\"\n    - **Type match**: All four registers MUST have identical element types.\n    - **Width match**: All four registers MUST have the same vector width `N`.\n    - **Mask width**: `%mask` MUST have width equal to `N`.\n    - **Active lanes**: Only lanes where the mask bit is 1 (true) participate in the computation.\n    - **Fused semantics**: `pto.vmull` is a fused multiply-subtract operation and is not always interchangeable with separate `vmul` plus `vsub`. The fused form provides better numerical precision and performance.",
+  "cpp_intrinsic": "",
+  "examples": [
+    "for (int i = 0; i < N; i++)\n    if (mask[i])\n        dst[i] = sub[i] - lhs[i] * rhs[i];"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - The verifier rejects illegal operand shapes, unsupported element types, and attribute combinations that are not valid for the selected instruction set or target profile.\n    - Any additional illegality stated in the constraints section is also part of the contract.",
+  "instruction_set_path": [
+    "9. Vector Instruction Reference",
+    "SFU And DSA Instructions"
+  ],
+  "mnemonic": "VMULL",
+  "name": "pto.vmull",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/vector/ops/sfu-and-dsa-ops/vmull.md"
+  ],
+  "summary": "Multiply-subtract: computes `lhs * rhs - sub` in a single fused operation.",
+  "syntax": "vmull %dst, %sub, %lhs, %rhs, %mask : !pto.vreg<NxT>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - Documented A5 coverage: `i32/u32 (native 32\u00d732\u219264 widening multiply)`.\n    - A5 is the most detailed concrete profile in the current manual; CPU simulation and A2/A3-class targets may support narrower subsets or emulate the behavior while preserving the visible PTO contract.\n    - Code that depends on an instruction-set-specific type list, distribution mode, or fused form should treat that dependency as target-profile-specific unless the PTO manual states cross-target portability explicitly."
+}

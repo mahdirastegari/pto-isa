@@ -1,0 +1,21 @@
+{
+  "category": "Sync And Config",
+  "constraints": "!!! warning \"Constraints\"\n    Refer to backend-specific legality checks for data type/layout/location/shape constraints.",
+  "cpp_intrinsic": "",
+  "examples": [],
+  "illegal_cases": "",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Sync And Config"
+  ],
+  "mnemonic": "TALIAS",
+  "name": "pto.talias",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/tile/ops/sync-and-config/talias.md"
+  ],
+  "summary": "Documented PTO instruction `pto.talias`.",
+  "syntax": "",
+  "target_profile_restrictions": ""
+}

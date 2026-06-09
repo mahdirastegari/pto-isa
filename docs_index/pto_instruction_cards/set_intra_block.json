@@ -1,0 +1,26 @@
+{
+  "category": "Pipeline Sync",
+  "constraints": "!!! warning \"Constraints\"\n    - **A5 only**: `set_intra_block` is only available on the A5 profile.\n    - **Semaphore ID mapping**: IDs 0\u201315 target AIV0; IDs 16\u201331 target AIV1. Programs MUST use the correct ID for the target subblock.\n    - **No broadcast**: Unlike A2A3's `set_cross_core`, one `set_intra_block` does NOT reach both subblocks. Separate calls are required for each subblock.\n    - **Semaphore pool**: 16 physical IDs with a 32-ID address space. IDs outside 0\u201331 are **illegal**.",
+  "cpp_intrinsic": "pipe_t pipe = PIPE_MTE2;\nuint64_t syncId = 0;\nset_intra_block(pipe, syncId);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\nusing namespace pto;\n\n// AIC signals AIV0 on semaphore 0\nSET_INTRA_BLOCK(PIPE_MTE2, /* sem_id */ 0);\n\n// AIC signals AIV1 on semaphore 16 (0 + 15 offset)\nSET_INTRA_BLOCK(PIPE_MTE2, /* sem_id */ 16);"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal on non-A5 profiles.\n    - Illegal if `%sem_id` is outside the range 0\u201331.\n    - Illegal if the target subblock is not reachable (invalid core ID encoding in sem_id).",
+  "instruction_set_path": [
+    "10. Scalar And Control Reference",
+    "Pipeline Sync"
+  ],
+  "mnemonic": "SET_INTRA_BLOCK",
+  "name": "pto.set_intra_block",
+  "operands": [
+    "pipe",
+    "sem_id"
+  ],
+  "outputs": [],
+  "sources": [
+    "docs/isa/scalar/ops/pipeline-sync/set-intra-block.md"
+  ],
+  "summary": "Signal an event within a cluster (A5). Uses **1:1 per-subblock semantics**: each call targets exactly one subblock. No broadcast; separate calls are required for each subblock.",
+  "syntax": "pto.set_intra_block %pipe, %sem_id : i64, i64",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    | Aspect | CPU Sim | A2/A3 | A5 |\n    |--------|:-------:|:------:|:--:|\n    | `set_intra_block` | Not available | Use `set_cross_core` | Supported |\n    | Broadcast semantics | Not applicable | One set \u2192 both subblocks | One set \u2192 one subblock |\n    | Per-subblock control | Not applicable | Not available | Supported |\n    | Semaphore pool | Not applicable | 16 IDs, 4-bit counter | 16 IDs, 32-ID address space |"
+}

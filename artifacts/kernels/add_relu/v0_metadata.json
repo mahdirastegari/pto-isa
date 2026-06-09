@@ -1,0 +1,11 @@
+{
+  "expected_status": "static_check_cpu_sim_then_ascend",
+  "mode": "PTO_AUTO",
+  "optimization_level": "correctness_first",
+  "source_files": [
+    "v0_auto.pto",
+    "v0_auto_kernel.cpp"
+  ],
+  "tail_handling": "valid-region guard for boundary tiles",
+  "version": "v0_auto"
+}

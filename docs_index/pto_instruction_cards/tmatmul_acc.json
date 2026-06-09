@@ -1,0 +1,23 @@
+{
+  "category": "Matrix And Matrix Vector",
+  "constraints": "!!! warning \"Constraints\"\n    - All constraints from `TMATMUL` apply to the `(cOutMatrix, aMatrix, bMatrix)` triple.",
+  "cpp_intrinsic": "template <typename TileRes, typename TileLeft, typename TileRight, typename... WaitEvents>\nPTO_INST RecordEvent TMATMUL_ACC(TileRes &cOutMatrix, TileRes &cInMatrix, TileLeft &aMatrix, TileRight &bMatrix, WaitEvents &... events);\n\ntemplate <AccPhase Phase, typename TileRes, typename TileLeft, typename TileRight, typename... WaitEvents>\nPTO_INST RecordEvent TMATMUL_ACC(TileRes &cOutMatrix, TileRes &cInMatrix, TileLeft &aMatrix, TileRight &bMatrix, WaitEvents &... events);\n\ntemplate <AccPhase Phase = AccPhase::Unspecified, typename TileRes, typename TileLeft, typename TileRight,\n          typename... WaitEvents>\nPTO_INST RecordEvent TMATMUL_ACC(TileRes &cMatrix, TileLeft &aMatrix, TileRight &bMatrix, WaitEvents &... events);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\n\nusing namespace pto;\n\nvoid example_auto() {\n  using A = TileLeft<half, 16, 16>;\n  using B = TileRight<half, 16, 16>;\n  using C = TileAcc<float, 16, 16>;\n  A a;\n  B b;\n  C c0, c1;\n  TMATMUL_ACC(c1, c0, a, b);\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal operand tuples, unsupported types, invalid layout combinations, or unsupported target-profile modes are rejected by the verifier or by the selected backend instruction set.\n    - Programs must not rely on behavior outside the documented legal domain of this operation, even if one backend currently accepts it.",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Matrix And Matrix Vector"
+  ],
+  "mnemonic": "TMATMUL_ACC",
+  "name": "pto.tmatmul_acc",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/tile/ops/matrix-and-matrix-vector/tmatmul-acc.md"
+  ],
+  "summary": "Matrix multiply with accumulator input (fused accumulate).",
+  "syntax": "%acc1 = tmatmul.acc %acc0, %a, %b : (!pto.tile<...>, !pto.tile<...>, !pto.tile<...>) -> !pto.tile<...>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - **Implementation notes (A2A3/A5)**:\n        - `TMATMUL_ACC_IMPL` uses `aMatrix.GetValidRow()`, `aMatrix.GetValidCol()`, and `bMatrix.GetValidCol()` for `m/k/n`.\n        - `cInMatrix` is not validated by explicit assertions in the current implementations (target-defined behavior)."
+}

@@ -1,0 +1,30 @@
+{
+  "category": "Predicate Load Store",
+  "constraints": "!!! warning \"Constraints\"\n    - **Alignment state**: `%align_in` MUST be the alignment state from the previous `pstu` call, or from a `pld`-instruction set operation. Using an uninitialized alignment state is **illegal**.\n    - **Alignment state chaining**: Programs MUST pass `%align_out` from one `pstu` to the `%align_in` of the next. Breaking the chain without re-initializing the alignment state is **illegal**.\n    - **Write atomicity**: Unlike `psts`, the 64-bit predicate word is NOT guaranteed to be atomically written. Programs that require exact predicate state restoration MUST use `psts`, not `pstu`.\n    - **UB address space**: `%base_in` MUST have address space `ub`.",
+  "cpp_intrinsic": "vector_align alignData;\nvector_bool src;\n__ubuf__ uint32_t *base;\npstu(alignData, src, base);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\nusing namespace pto;\n\nvoid stream_masks(Ptr<ub_space_t, ub_t> dst_base,\n                  predicate_t* masks,\n                  int count) {\n    predicate_t align_state = 0;\n    for (int i = 0; i < count; ++i) {\n        PSTU(masks[i], dst_base, align_state, align_state);\n        dst_base = dst_base + (predicate_width_bytes);\n    }\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal if `%align_in` is not initialized from a prior `pstu` or `pld` operation.\n    - Illegal if alignment state chain is broken.\n    - Illegal if `%base_in` is not a UB-space pointer.\n    - `pstu` MUST NOT be used when exact predicate save/restore is required.",
+  "instruction_set_path": [
+    "10. Scalar And Control Reference",
+    "Predicate Load Store"
+  ],
+  "mnemonic": "PSTU",
+  "name": "pto.pstu",
+  "operands": [
+    "align_in",
+    "mask",
+    "base_in"
+  ],
+  "outputs": [
+    "align_out",
+    "base_out"
+  ],
+  "sources": [
+    "docs/isa/scalar/ops/predicate-load-store/pstu.md"
+  ],
+  "summary": "Stream predicate register to UB with alignment state tracking. High-throughput variant that relaxes alignment requirements at the cost of weaker write atomicity guarantees.",
+  "syntax": "%align_out, %base_out = pto.pstu %align_in, %mask, %base_in : !pto.align, !pto.mask<G>, !pto.ptr<T, ub> -> !pto.align, !pto.ptr<T, ub>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    | Aspect | CPU Sim | A2/A3 | A5 |\n    |--------|:-------:|:------:|:--:|\n    | Stream predicate store | Not supported | Supported | Supported |\n    | Alignment state tracking | Not applicable | Supported | Supported |\n    | Write atomicity guarantee | Not applicable | Not guaranteed | Not guaranteed |\n\n    CPU simulator does not implement `pstu`. Portable programs MUST use `psts` for exact predicate persistence or provide a CPU-sim fallback."
+}

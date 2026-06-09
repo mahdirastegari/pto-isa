@@ -1,0 +1,31 @@
+{
+  "category": "DMA Copy",
+  "constraints": "!!! warning \"Constraints\"\n    - `nburst(...)` is always required.\n    - Each `loop(...)` group must be provided as a complete triple when present.\n    - `nburst(...)` is the innermost group.\n    - `loop(...)` groups are ordered from inner to outer; the first `loop(...)` group wraps `nburst(...)`, and each additional `loop(...)` group wraps all earlier groups.\n    - `pad(...)` may contain only `%pad_value`; omitted left and right padding counts default to 0. If either left or right count is provided, both must be provided.\n    - `pad(...)` is independent of the optional `loop(...)` groups. A DMA load may use `nburst(...) pad(...)` without any `loop(...)` group.\n    - `%ub_dst` MUST be 32-byte aligned. When `pad(...)` is present, each UB row is padded from `%len_burst` up to the 32B-aligned boundary of the UB destination stride, ensuring every row starts at a 32B-aligned offset.",
+  "cpp_intrinsic": "",
+  "examples": [
+    "// Single-level transfer with padding: rows of `%len_burst` bytes,\n// padded to 32B-aligned UB rows using %pad as fill.\npto.mte_gm_ub %gm_in, %ub_out, %cache, %len_burst\n  nburst(%rows, %gm_row_stride, %ub_row_stride)\n  pad(%pad)\n  : !pto.ptr<f16, gm>, !pto.ptr<f16, ub>, i64, i64, i64, i64, i64,\n    pad f16"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - The verifier rejects illegal operand shapes, malformed clause groups, and attribute combinations not valid for the selected target profile.\n    - Any additional illegality stated in the constraints section is also part of the contract.",
+  "instruction_set_path": [
+    "10. Scalar And Control Reference",
+    "DMA Copy"
+  ],
+  "mnemonic": "COPY_GM_TO_UBUF",
+  "name": "pto.copy_gm_to_ubuf",
+  "operands": [
+    "Parameter",
+    "gm_src",
+    "ub_dst",
+    "l2_cache_ctl",
+    "len_burst"
+  ],
+  "outputs": [
+    "None"
+  ],
+  "sources": [
+    "docs/isa/scalar/ops/dma-copy/copy-gm-to-ubuf.md"
+  ],
+  "summary": "Execute a grouped GM\u2192UB DMA transfer. `nburst(...)` defines the innermost repeated burst transfer, optional `loop(...)` groups add outer repetition levels, and optional `pad(...)` controls UB row padding.",
+  "syntax": "pto.mte_gm_ub %gm_src, %ub_dst, %l2_cache_ctl, %len_burst\n  nburst(%n_burst, %src_stride, %dst_stride)\n  [loop(%loop_count, %loop_src_stride, %loop_dst_stride)]*\n  [pad(%pad_value[, %left_padding_count, %right_padding_count])]\n  : !pto.ptr<T, gm>, !pto.ptr<T, ub>, i64, i64, i64, i64, i64,\n    [loop i64, i64, i64,]*\n    [pad T[, i64, i64]]",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - CPU simulation preserves the visible copy contract but may not expose all DMA overlap hazards.\n    - A2/A3 and A5 may narrow supported element sizes, row widths, or cache-control semantics."
+}

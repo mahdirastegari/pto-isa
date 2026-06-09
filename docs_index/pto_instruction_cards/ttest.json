@@ -1,0 +1,22 @@
+{
+  "category": "11. Communication ISA Reference",
+  "constraints": "!!! warning \"Constraints\"\n    - **Type constraints**:\n        - `GlobalSignalData::DType` must be `int32_t` (32-bit signal).\n    - **Memory constraints**:\n        - `signalData` must point to local address (on current NPU).\n    - **Return value**:\n        - Returns `true` if condition is satisfied, `false` otherwise.\n        - For signal tensor, returns `true` only if ALL signals satisfy the condition.\n    - **Shape semantics**:\n        - For single signal: Shape is `<1,1,1,1,1>`.\n        - For signal tensor: Shape determines the multi-dimensional region (up to 5-D) to test.\n    - **Comparison operators** (WaitCmp):\n      | Value | Condition |\n      |-------|-----------|\n      | `EQ` | `signal == cmpValue` |\n      | `NE` | `signal != cmpValue` |\n      | `GT` | `signal > cmpValue` |\n      | `GE` | `signal >= cmpValue` |\n      | `LT` | `signal < cmpValue` |\n      | `LE` | `signal <= cmpValue` |",
+  "cpp_intrinsic": "template <typename GlobalSignalData, typename... WaitEvents>\nPTO_INST bool TEST(GlobalSignalData &signalData, int32_t cmpValue, WaitCmp cmp, WaitEvents&... events);",
+  "examples": [
+    "#include <pto/comm/pto_comm_inst.hpp>\n\nusing namespace pto;\n\nbool check_ready(__gm__ int32_t* local_signal) {\n    comm::Signal sig(local_signal);\n\n    // Check if signal == 1\n    return comm::TEST(sig, 1, comm::WaitCmp::EQ);\n}"
+  ],
+  "illegal_cases": "",
+  "instruction_set_path": [
+    "11. Communication ISA Reference"
+  ],
+  "mnemonic": "TTEST",
+  "name": "pto.ttest",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/comm/TTEST.md"
+  ],
+  "summary": "Documented PTO instruction `pto.ttest`.",
+  "syntax": "",
+  "target_profile_restrictions": ""
+}

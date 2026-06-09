@@ -1,0 +1,29 @@
+{
+  "category": "Pipeline Sync",
+  "constraints": "!!! warning \"Constraints\"\n    - The selected pipe identifiers and event identifier MUST be valid for the selected target profile.\n    - Waiting on an event that is never signaled is an illegal PTO program.\n    - Portable code MUST pair each wait with the intended producer-side `pto.set_flag`.",
+  "cpp_intrinsic": "",
+  "examples": [
+    "pto.wait_flag[\"PIPE_MTE2\", \"PIPE_V\", \"EVENT_ID0\"]"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - The verifier rejects illegal operand shapes, unsupported pipe or event identifiers, and attribute combinations that are not valid for the selected instruction set or target profile.\n    - Any additional illegality stated in the constraints section is also part of the contract.",
+  "instruction_set_path": [
+    "10. Scalar And Control Reference",
+    "Pipeline Sync"
+  ],
+  "mnemonic": "WAIT_FLAG",
+  "name": "pto.wait_flag",
+  "operands": [
+    "SRC_PIPE",
+    "DST_PIPE",
+    "EVENT_ID"
+  ],
+  "outputs": [
+    "None"
+  ],
+  "sources": [
+    "docs/isa/scalar/ops/pipeline-sync/wait-flag.md"
+  ],
+  "summary": "Block the destination pipeline until a matching event is signaled.",
+  "syntax": "wait_flag[\"SRC_PIPE\", \"DST_PIPE\", \"EVENT_ID\"]",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - CPU simulation preserves the visible event protocol but may not expose all low-level hazards that motivate it on hardware.\n    - A2/A3 and A5 may use different concrete pipe and event spaces; portable code must rely on the documented PTO contract plus the selected target profile."
+}

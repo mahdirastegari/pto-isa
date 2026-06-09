@@ -1,0 +1,28 @@
+{
+  "category": "Tile Scalar And Immediate",
+  "constraints": "!!! warning \"Constraints\"\n    - `dst` and `base` must use the same element type.\n    - `dst` and `base` must have matching valid-row and valid-column extents.\n    - In the current concrete implementation, both tiles must be row-major `TileType::Vec`.\n    - The scalar exponent uses `typename DstTile::DType`.\n    - `PowAlgorithm::DEFAULT` accepts `float`, `half`, `int32_t`, `uint32_t`, `int16_t`, `uint16_t`, `int8_t`, and `uint8_t`.\n    - `PowAlgorithm::HIGH_PRECISION` accepts `float`, `half`, and `bfloat16_t`.",
+  "cpp_intrinsic": "template <auto PrecisionType = PowAlgorithm::DEFAULT, typename DstTile, typename BaseTile, typename TmpTile,\n          typename... WaitEvents>\nPTO_INTERNAL RecordEvent TPOWS(DstTile &dst, BaseTile &base, typename DstTile::DType exp, TmpTile &tmp,\n                               WaitEvents &... events);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\n\nusing namespace pto;\n\nvoid example() {\n  using TileT = Tile<TileType::Vec, float, 64, 64, BLayout::RowMajor>;\n  TileT dst;\n  TileT base;\n  TileT tmp;\n\n  TPOWS(dst, base, 2.0f, tmp);\n  TPOWS<PowAlgorithm::HIGH_PRECISION>(dst, base, 2.0f, tmp);\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Unsupported type/layout combinations and mismatched valid regions are rejected by backend legality checks.\n    - Programs must not infer CPU-simulator or A2/A3 support from the public template alone.",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Tile Scalar And Immediate"
+  ],
+  "mnemonic": "TPOWS",
+  "name": "pto.tpows",
+  "operands": [
+    "dst",
+    "base",
+    "exp",
+    "tmp"
+  ],
+  "outputs": [],
+  "sources": [
+    "docs/isa/tile/ops/tile-scalar-and-immediate/tpows.md"
+  ],
+  "summary": "Elementwise power where the base comes from a tile and the exponent is a scalar.",
+  "syntax": "%dst = tpows %base, %exp : !pto.tile<...>, dtype -> !pto.tile<...>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    The current authored tree documents concrete `tpows` implementation behavior for A5. This checkout does not provide a stable documented CPU-simulator or A2/A3 implementation contract for `tpows`.\n\n    Portable code should treat `pto.tpows` as A5-specific unless a target-profile page explicitly widens that guarantee."
+}

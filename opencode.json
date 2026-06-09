@@ -1,0 +1,20 @@
+{
+  "agents": {
+    "spec": {"prompt": "agents/spec_agent.md"},
+    "retrieval": {"prompt": "agents/retrieval_agent.md"},
+    "baseline": {"prompt": "agents/baseline_agent.md"},
+    "pto_generator": {"prompt": "agents/pto_generator_agent.md"},
+    "verifier": {"prompt": "agents/verifier_agent.md"},
+    "optimizer": {"prompt": "agents/optimizer_agent.md"},
+    "memory": {"prompt": "agents/memory_agent.md"}
+  },
+  "mcp": {
+    "pto_docs": {"command": "python3", "args": ["mcp/pto_docs_mcp/server.py"]},
+    "ascend_env": {"command": "python3", "args": ["mcp/ascend_env_mcp/server.py"]},
+    "compile_run": {"command": "python3", "args": ["mcp/compile_run_mcp/server.py"]},
+    "profiler": {"command": "python3", "args": ["mcp/profiler_mcp/server.py"]},
+    "cost_model": {"command": "python3", "args": ["mcp/cost_model_mcp/server.py"]},
+    "experience_bank": {"command": "python3", "args": ["mcp/experience_bank_mcp/server.py"]},
+    "benchmark": {"command": "python3", "args": ["mcp/benchmark_mcp/server.py"]}
+  }
+}

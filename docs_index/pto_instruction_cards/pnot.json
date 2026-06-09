@@ -1,0 +1,28 @@
+{
+  "category": "Predicate Generation And Algebra",
+  "constraints": "!!! warning \"Constraints\"\n    - **Operand widths**: Both predicates MUST have the same width.\n    - **No implicit extension**: `pnot` operates on the full predicate width. For predicates of mixed widths, explicit pack/unpack must be used.",
+  "cpp_intrinsic": "vector_bool dst;\nvector_bool src;\nvector_bool mask;\npnot(dst, src, mask);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\nusing namespace pto;\n\nvoid invert_mask(RegBuf<predicate_t>& dst,\n                 const RegBuf<predicate_t>& src) {\n    PNOT(dst, src, src);\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal if predicate operand widths are not consistent.",
+  "instruction_set_path": [
+    "10. Scalar And Control Reference",
+    "Predicate Generation And Algebra"
+  ],
+  "mnemonic": "PNOT",
+  "name": "pto.pnot",
+  "operands": [
+    "src",
+    "mask"
+  ],
+  "outputs": [
+    "dst"
+  ],
+  "sources": [
+    "docs/isa/scalar/ops/predicate-generation-and-algebra/pnot.md"
+  ],
+  "summary": "Bitwise NOT of a predicate.",
+  "syntax": "%dst = pto.pnot %src, %mask : !pto.mask<G>, !pto.mask<G> -> !pto.mask<G>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    | Aspect | CPU Sim | A2/A3 | A5 |\n    |--------|:-------:|:------:|:--:|\n    | Bitwise NOT | Simulated | Supported | Supported |"
+}

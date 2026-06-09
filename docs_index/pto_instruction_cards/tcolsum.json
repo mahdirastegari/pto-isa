@@ -1,0 +1,23 @@
+{
+  "category": "Reduce And Expand",
+  "constraints": "!!! warning \"Constraints\"\n    ### General constraints / checks\n\n    - `dst` and `src` must be `TileType::Vec`.\n\n    - `dst` and `src` must use standard ND layout: row-major and non-fractal (`BLayout::RowMajor`, `SLayout::NoneBox`).\n\n    - `dst` and `src` must use the same element type.\n\n    - Runtime checks:\n      - `src.GetValidCol() == dst.GetValidCol()`\n      - `src.GetValidRow() != 0`\n      - `src.GetValidCol() != 0`\n      - `src.GetValidCol() <= tmp` row stride measured in `src` elements\n\n    - Supported element types: `half`, `float`, `int16_t`, `int32_t`.\n\n    - `tmp` must be `TileType::Vec` and use standard ND layout: row-major and non-fractal (`BLayout::RowMajor`, `SLayout::NoneBox`).\n\n    - `tmp` must use the same element type as `src` and `dst`.",
+  "cpp_intrinsic": "template <typename TileDataOut, typename TileDataIn, typename... WaitEvents>\nPTO_INST RecordEvent TCOLSUM(TileDataOut &dst, TileDataIn &src, WaitEvents &... events);\n\ntemplate <typename TileDataOut, typename TileDataIn, typename TileDataTmp, typename... WaitEvents>\nPTO_INST RecordEvent TCOLSUM(TileDataOut &dst, TileDataIn &src, TileDataTmp &tmp, bool isBinary, WaitEvents &... events);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\n\nusing namespace pto;\n\nvoid example_auto() {\n  using SrcT = Tile<TileType::Vec, float, 16, 16>;\n  using DstT = Tile<TileType::Vec, float, 1, 16>;\n  using TmpT = Tile<TileType::Vec, float, 16, 16>;\n  SrcT src;\n  DstT dst;\n  TmpT tmp;\n  TCOLSUM(dst, src, tmp, /*isBinary=*/false);\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal operand tuples, unsupported types, invalid layout combinations, or unsupported target-profile modes are rejected by the verifier or by the selected backend instruction set.\n    - Programs must not rely on behavior outside the documented legal domain of this operation, even if one backend currently accepts it.",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Reduce And Expand"
+  ],
+  "mnemonic": "TCOLSUM",
+  "name": "pto.tcolsum",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/tile/ops/reduce-and-expand/tcolsum.md"
+  ],
+  "summary": "Reduce each column by summing across rows.",
+  "syntax": "%dst = tcolsum %src {isBinary = false} : !pto.tile<...> -> !pto.tile<...>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - `isBinary` selects the checked backend path:\n      - `true`: binary-tree accumulation using `tmp`\n      - `false`: sequential accumulation into `dst`\n\n    === \"A2/A3\"\n        - If `src.GetValidRow() == 0` or `src.GetValidCol() == 0`, the implementation returns early.\n\n    === \"A5\"\n        - Shared A5 column-reduce checks allow `half`, `float`, `int8_t`, `uint8_t`, `int16_t`, `uint16_t`, `int32_t`, `uint32_t`, `bfloat16_t`.\n\n        - The checked A5 `TCOLSUM` path still takes `tmp` only for the binary accumulation path; no extra compile-time `tmp` type/layout assertions are explicitly enforced in `TCOLSUM_IMPL`."
+}

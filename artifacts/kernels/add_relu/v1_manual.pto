@@ -1,0 +1,12 @@
+// Auto-generated PTO Manual-mode candidate for add_relu.
+// Strategy: 2D tiling, UB reuse for A/B/sum/C, tile_shape=(128, 256), boundary valid-region guard.
+// Candidate remains correctness-first until verified on CPU-SIM and Ascend.
+for tile_m in range(0, M, 128):
+  for tile_n in range(0, N, 256):
+    valid_m = min(128, M - tile_m);
+    valid_n = min(256, N - tile_n);
+    TLOAD(aTile, aGlobal.subview(tile_m, tile_n, valid_m, valid_n));
+    TLOAD(bTile, bGlobal.subview(tile_m, tile_n, valid_m, valid_n));
+    TADD(sumTile, aTile, bTile);
+    TRELU(cTile, sumTile);
+    TSTORE(cGlobal.subview(tile_m, tile_n, valid_m, valid_n), cTile);

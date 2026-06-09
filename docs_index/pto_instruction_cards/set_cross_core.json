@@ -1,0 +1,26 @@
+{
+  "category": "Pipeline Sync",
+  "constraints": "!!! warning \"Constraints\"\n    - **A2A3 only**: `set_cross_core` is only available on the A2A3 profile. Programs that use this operation MUST provide a fallback path for other profiles.\n    - **Semaphore pool**: The pool has 16 physical semaphore IDs per cluster. The hardware implements a 4-bit counter (0\u201315). `set_cross_core` increments the counter; `wait_flag_dev` decrements it. On A2/A3: if the counter would overflow past 15, the hardware wraps the counter and signals an overflow error. On CPU simulator: not applicable.\n    - **Broadcast vs. per-subblock**: The broadcast behavior is specific to mode2. Other modes (if supported) may have different semantics.\n    - **core_id meaning**: `core_id = 0` targets AIV0 subblock; `core_id = 1` targets AIV1 subblock. Other values are **illegal**.",
+  "cpp_intrinsic": "ffts_cross_core_sync(PIPE_MTE3, AscendC::GetffstMsg(0x02, AscendC::SYNC_AIC_AIV_FLAG));",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\nusing namespace pto;\n\n// Cube signals both AIV subblocks simultaneously\nSET_CROSS_CORE(/* core_id */ 0, /* event_id */ 0);  // broadcast to both AIV0 and AIV1"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal on non-A2A3 profiles.\n    - Illegal if `%event_id` is outside the valid range (0\u201315).\n    - Illegal if the hardware counter would overflow.",
+  "instruction_set_path": [
+    "10. Scalar And Control Reference",
+    "Pipeline Sync"
+  ],
+  "mnemonic": "SET_CROSS_CORE",
+  "name": "pto.set_cross_core",
+  "operands": [
+    "core_id",
+    "event_id"
+  ],
+  "outputs": [],
+  "sources": [
+    "docs/isa/scalar/ops/pipeline-sync/set-cross-core.md"
+  ],
+  "summary": "Signal an event to another core in a cluster (A2A3). Uses **mode2 broadcast semantics**: one signal reaches both vector subblocks simultaneously; the Cube blocks until both subblocks have signaled back.",
+  "syntax": "pto.set_cross_core %core_id, %event_id : i64, i64",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    | Aspect | CPU Sim | A2/A3 | A5 |\n    |--------|:-------:|:------:|:--:|\n    | `set_cross_core` | Not available | Supported (mode2) | Use `set_intra_block` |\n    | Mode2 broadcast semantics | Not applicable | Supported | Not applicable |\n    | Semaphore pool size | Not applicable | 16 IDs | Not applicable |\n    | Per-subblock signaling | Not applicable | 1 set reaches both | 1 set per subblock |\n\n    CPU simulator does not implement `set_cross_core`. Portable programs MUST guard this operation with profile checks or provide CPU-sim fallback."
+}

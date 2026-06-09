@@ -1,0 +1,27 @@
+{
+  "category": "Predicate Load Store",
+  "constraints": "!!! warning \"Constraints\"\n    - **UB address space**: `%ub_ptr` MUST have address space `ub`.\n    - **Offset alignment**: The effective address MUST be 64-bit aligned. Misaligned effective addresses are **illegal**.\n    - **Distribution mode**: The `dist` attribute MUST be `\"NORM\"` or `\"PK\"`. The `\"PK\"` mode packs two 32-bit predicate segments into one 64-bit word for stores.\n    - **Predicate width**: The store transfers exactly 64 bits, which MUST match the active element type context.\n    - **Write atomicity**: The 64-bit predicate word is written atomically.",
+  "cpp_intrinsic": "vector_bool src;\n__ubuf__ uint32_t *base;\nvector_address offset;\npst(src, base, offset, __cce_simd::NORM);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\nusing namespace pto;\n\nvoid store_with_offset(RegBuf<predicate_t>& src,\n                       Ptr<ub_space_t, ub_t> base,\n                       int32_t slot) {\n    // slot is in units of 8 bytes (one predicate word per slot)\n    PST(src, base, slot, \"NORM\");\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal if `%ub_ptr` is not a UB-space pointer.\n    - Illegal if the effective address is not 64-bit aligned.\n    - Illegal if `dist` attribute is not `\"NORM\"` or `\"PK\"`.",
+  "instruction_set_path": [
+    "10. Scalar And Control Reference",
+    "Predicate Load Store"
+  ],
+  "mnemonic": "PST",
+  "name": "pto.pst",
+  "operands": [
+    "mask",
+    "ub_ptr",
+    "areg"
+  ],
+  "outputs": [],
+  "sources": [
+    "docs/isa/scalar/ops/predicate-load-store/pst.md"
+  ],
+  "summary": "Store the full predicate register to a UB location with a register-relative address offset.",
+  "syntax": "pto.pst %mask, %ub_ptr, %areg, \"DIST\" : !pto.mask<G>, !pto.ptr<i64, ub>, i32",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    | Aspect | CPU Sim | A2/A3 | A5 |\n    |--------|:-------:|:------:|:--:|\n    | Register-offset predicate store | Simulated | Supported | Supported |\n    | `\"NORM\"` distribution mode | Supported | Supported | Supported |\n    | `\"PK\"` (packed) distribution mode | Not supported | Supported | Supported |"
+}

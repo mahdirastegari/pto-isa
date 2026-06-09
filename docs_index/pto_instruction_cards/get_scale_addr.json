@@ -1,0 +1,26 @@
+{
+  "category": "Sync And Config",
+  "constraints": "!!! warning \"Constraints\"\n    - **Both `src` and `dst` must be Tile instances**.\n    - Currently only works in Auto mode (Manual mode support planned for future releases).",
+  "cpp_intrinsic": "template <typename TileDataDst, typename TileDataSrc, typename... WaitEvents>\nPTO_INST RecordEvent GET_SCALE_ADDR(TileDataDst &dst, TileDataSrc &src, WaitEvents&... events);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\nusing namespace pto;\n\ntemplate <typename T, int ARows, int ACols, int BRows, int BCols>\nvoid example() {\n    using LeftTile = TileLeft<T, ARows, ACols>;\n    using RightTile = TileRight<T, BRows, BCols>;\n    using LeftScaleTile = TileLeftScale<T, ARows, ACols>;\n    using RightScaleTile = TileRightScale<T, BRows, BCols>;\n\n    LeftTile aTile;\n    RightTile bTile;\n    LeftScaleTile aScaleTile;\n    RightScaleTile bScaleTile;\n\n    GET_SCALE_ADDR(aScaleTile, aTile);\n    GET_SCALE_ADDR(bScaleTile, bTile);\n}"
+  ],
+  "illegal_cases": "",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Sync And Config"
+  ],
+  "mnemonic": "GET_SCALE_ADDR",
+  "name": "pto.get_scale_addr",
+  "operands": [
+    "src",
+    "dst"
+  ],
+  "outputs": [],
+  "sources": [
+    "docs/isa/tile/ops/sync-and-config/get-scale-addr.md"
+  ],
+  "summary": "Bind the on-chip address of an output tile as a scaled address of the input tile. The scaling factor is defined by a right-shift amount `SHIFT_MX_ADDR` in `include/pto/npu/a5/utils.hpp`.\n\nOn A2/A3, `pto.get_scale_addr` is unsupported \u2014 calling it is illegal. On A5, this instruction computes `dst_addr = src_addr >> SHIFT_MX_ADDR` and writes the scaled address into the destination tile's address register. On the CPU simulator, the operation updates the software tile descriptor's address field with the right-shifted value.",
+  "syntax": "%dst = pto.get_scale_addr %src : !pto.tile<...>",
+  "target_profile_restrictions": ""
+}

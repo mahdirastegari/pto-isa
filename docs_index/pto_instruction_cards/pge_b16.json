@@ -1,0 +1,25 @@
+{
+  "category": "Predicate Generation And Algebra",
+  "constraints": "!!! warning \"Constraints\"\n    - The installed public CCE API accepts documented `Pat*` marker types only; there is no public runtime-scalar overload for `pge_b16` in the shipped 3510 header.\n    - Programs must use a pattern token that is valid for the selected target profile.\n    - This operation materializes a predicate register only; it does not update any scalar input in place.",
+  "cpp_intrinsic": "vector_bool mask = pge_b16(__cce_simd::PAT_VL8);",
+  "examples": [
+    "vector_bool mask = pge_b16(__cce_simd::PAT_VL8);"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal if the pattern token is not supported by the selected target profile.\n    - Illegal if the result is consumed in a predicate-width context that the selected backend does not support.",
+  "instruction_set_path": [
+    "10. Scalar And Control Reference",
+    "Predicate Generation And Algebra"
+  ],
+  "mnemonic": "PGE_B16",
+  "name": "pto.pge_b16",
+  "operands": [],
+  "outputs": [
+    "mask"
+  ],
+  "sources": [
+    "docs/isa/scalar/ops/predicate-generation-and-algebra/pge-b16.md"
+  ],
+  "summary": "Construct a 16-bit predicate mask from a documented `Pat*` token.",
+  "syntax": "%mask = pto.pge_b16 \"PAT_VL8\" : !pto.mask<b16>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    | Aspect | CPU Sim | A2/A3 | A5 |\n    |--------|:-------:|:------:|:--:|\n    | Pattern-token predicate generation | Simulated | Supported | Supported |\n    | Public CCE surface | Emulated | Supported | Supported |"
+}

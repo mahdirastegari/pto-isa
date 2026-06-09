@@ -1,0 +1,26 @@
+{
+  "category": "Sync And Config",
+  "constraints": "!!! warning \"Constraints\"\n    - Two non-alias tiles must not use the same physical address without an intervening `TSYNC`.\n    - Configuration state must only be used where later instructions document the dependency.\n    - Programs must not treat manual placement as a portable substitute for legal PTO behavior.",
+  "cpp_intrinsic": "template <typename T, typename AddrType>\nPTO_INST void TASSIGN(T& obj, AddrType addr);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\nusing namespace pto;\n\nvoid example() {\n  using TileT = Tile<TileType::Vec, float, 16, 16>;\n  TileT a, b, c;\n  TASSIGN(a, 0x1000);\n  TASSIGN(b, 0x2000);\n  TASSIGN(c, 0x3000);\n  TADD(c, a, b);\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - In Auto mode, `TASSIGN(tile, addr)` is a no-op because the compiler/runtime manages placement.\n    - If `obj` is a `GlobalTensor`, `addr` must be a pointer type matching `GlobalTensor::DType`.\n    - Using `TASSIGN` with an out-of-bounds address triggers a compile-time error (Form 2) or undefined behavior (Form 1).",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Sync And Config"
+  ],
+  "mnemonic": "TASSIGN",
+  "name": "pto.tassign",
+  "operands": [
+    "tile",
+    "addr"
+  ],
+  "outputs": [],
+  "sources": [
+    "docs/isa/tile/ops/sync-and-config/tassign.md"
+  ],
+  "summary": "Bind a Tile object to an on-chip physical address. In Manual mode, this is how the author controls which tile buffer holds which logical tile variable.",
+  "syntax": "tassign %tile, %addr : !pto.tile<...>, index",
+  "target_profile_restrictions": ""
+}

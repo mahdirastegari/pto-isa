@@ -1,0 +1,23 @@
+{
+  "category": "Tile Scalar And Immediate",
+  "constraints": "!!! warning \"Constraints\"\n    - **Valid region**:\n        - The op uses `dst.GetValidRow()` / `dst.GetValidCol()` as the iteration domain.",
+  "cpp_intrinsic": "template <typename TileDataDst, typename TileDataSrc, typename... WaitEvents>\nPTO_INST RecordEvent TSHRS(TileDataDst &dst, TileDataSrc &src, typename TileDataDst::DType scalar, WaitEvents &... events);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\n\nusing namespace pto;\n\nvoid example() {\n  using TileDst = Tile<TileType::Vec, uint16_t, 16, 16>;\n  using TileSrc = Tile<TileType::Vec, uint16_t, 16, 16>;\n  TileDst dst;\n  TileSrc src;\n  TSHRS(dst, src, 0x2);\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal operand tuples, unsupported types, invalid layout combinations, or unsupported target-profile modes are rejected by the verifier or by the selected backend instruction set.\n    - Programs must not rely on behavior outside the documented legal domain of this operation, even if one backend currently accepts it.",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Tile Scalar And Immediate"
+  ],
+  "mnemonic": "TSHRS",
+  "name": "pto.tshrs",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/tile/ops/tile-scalar-and-immediate/tshrs.md"
+  ],
+  "summary": "Elementwise shift-right a tile by a scalar.",
+  "syntax": "%dst = tshrs %src, %scalar : !pto.tile<...>, i32",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - **Implementation checks (A2A3)**:\n        - Supported element types are `int32_t`, `int`, `int16_t`, `uint32_t`, `unsigned int`, and `uint16_t`.\n        - `dst` and `src` must use the same element type.\n        - `dst` and `src` must be vector tiles.\n        - Runtime: `src.GetValidRow() == dst.GetValidRow()` and `src.GetValidCol() == dst.GetValidCol()`.\n        - Scalar only supports zero and positive values.\n\n    - **Implementation checks (A5)**:\n        - Supported element types are `int32_t`, `int16_t`, `int8_t`, `uint32_t`, `uint16_t`, and `uint8_t`.\n        - `dst` and `src` must use the same element type.\n        - `dst` and `src` must be vector tiles.\n        - Static valid bounds must satisfy `ValidRow <= Rows` and `ValidCol <= Cols` for both tiles.\n        - Runtime: `src.GetValidRow() == dst.GetValidRow()` and `src.GetValidCol() == dst.GetValidCol()`.\n        - Scalar only supports zero and positive values."
+}

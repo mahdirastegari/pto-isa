@@ -1,0 +1,20 @@
+{
+  "category": "11. Communication ISA Reference",
+  "constraints": "!!! warning \"Constraints\"\n    - `GlobalSrcData::RawDType == GlobalDstData::RawDType`\n    - `GlobalSrcData::layout == GlobalDstData::layout`\n    - Both SDMA and URMA paths require source tensor to be **flat contiguous logical 1D only**\n    - SDMA workspace must be a valid GM pointer allocated by host-side `SdmaWorkspaceManager`\n    - URMA workspace must be a valid GM pointer allocated by host-side `UrmaWorkspaceManager`\n    - URMA is only available on NPU_ARCH 3510 (Ascend950)\n    - The symmetric data buffer passed to `UrmaWorkspaceManager::Init()` must be backed by huge-page memory (allocate with `ACL_MEM_MALLOC_HUGE_ONLY`). The underlying MR registration requires huge-page backing; `ACL_MEM_MALLOC_HUGE_FIRST` may silently fall back to 4KB pages for small allocations, causing registration to fail\n\n    If the 1D contiguous requirement is not met, current implementation returns an invalid async event (`handle == 0`).",
+  "cpp_intrinsic": "template <DmaEngine engine = DmaEngine::SDMA,\n          typename GlobalDstData, typename GlobalSrcData, typename... WaitEvents>\nPTO_INST AsyncEvent PUT_ASYNC(GlobalDstData &dstGlobalData, GlobalSrcData &srcGlobalData,\n                             const AsyncSession &session, WaitEvents &... events);",
+  "examples": [],
+  "illegal_cases": "",
+  "instruction_set_path": [
+    "11. Communication ISA Reference"
+  ],
+  "mnemonic": "TPUT_ASYNC",
+  "name": "pto.tput_async",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/comm/TPUT_ASYNC.md"
+  ],
+  "summary": "Documented PTO instruction `pto.tput_async`.",
+  "syntax": "",
+  "target_profile_restrictions": ""
+}

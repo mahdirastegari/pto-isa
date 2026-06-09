@@ -1,0 +1,25 @@
+{
+  "category": "Pipeline Sync",
+  "constraints": "!!! warning \"Constraints\"\n    - The selected pipe identifier MUST be valid for the selected target profile.\n    - This barrier orders work within one pipeline; cross-pipeline producer-consumer edges still require the appropriate event or buffer protocol.\n    - Portable code SHOULD use the narrowest ordering primitive that matches the hazard.",
+  "cpp_intrinsic": "",
+  "examples": [
+    "pto.pipe_barrier \"PIPE_MTE3\""
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - The verifier rejects illegal operand shapes, unsupported pipe or event identifiers, and attribute combinations that are not valid for the selected instruction set or target profile.\n    - Any additional illegality stated in the constraints section is also part of the contract.",
+  "instruction_set_path": [
+    "10. Scalar And Control Reference",
+    "Pipeline Sync"
+  ],
+  "mnemonic": "PIPE_BARRIER",
+  "name": "pto.pipe_barrier",
+  "operands": [],
+  "outputs": [
+    "None"
+  ],
+  "sources": [
+    "docs/isa/scalar/ops/pipeline-sync/pipe-barrier.md"
+  ],
+  "summary": "Drain all previously issued work in one pipeline before allowing later work on that same pipeline to begin.",
+  "syntax": "pipe_barrier \"PIPE_*\"",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - CPU simulation preserves the visible ordering contract but may not expose every pipeline hazard that motivates the barrier on hardware.\n    - A2/A3 and A5 may differ in the exact pipe set that can be named."
+}

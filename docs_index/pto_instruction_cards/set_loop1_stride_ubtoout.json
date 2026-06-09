@@ -1,0 +1,28 @@
+{
+  "category": "DMA Copy",
+  "constraints": "!!! warning \"Constraints\"\n    - UB stride values MUST obey the source-stride field width and alignment rules of the selected target profile.\n    - GM stride values MUST be representable in the destination-stride field width of the selected target profile.\n    - The configured strides apply only to later UB\u2192GM DMA operations.",
+  "cpp_intrinsic": "",
+  "examples": [
+    "pto.set_loop1_stride_ubtoout %src_stride, %dst_stride : i64, i64"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - The verifier rejects illegal operand shapes, unsupported pipe or event identifiers, and attribute combinations that are not valid for the selected instruction set or target profile.\n    - Any additional illegality stated in the constraints section is also part of the contract.",
+  "instruction_set_path": [
+    "10. Scalar And Control Reference",
+    "DMA Copy"
+  ],
+  "mnemonic": "SET_LOOP1_STRIDE_UBTOOUT",
+  "name": "pto.set_loop1_stride_ubtoout",
+  "operands": [
+    "src_stride",
+    "dst_stride"
+  ],
+  "outputs": [
+    "None"
+  ],
+  "sources": [
+    "docs/isa/scalar/ops/dma-copy/set-loop1-stride-ubtoout.md"
+  ],
+  "summary": "Configure the inner-loop pointer advance used by the UB\u2192GM DMA engine.",
+  "syntax": "set_loop1_stride_ubtoout %src_stride, %dst_stride : i64, i64",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - CPU simulation preserves the visible configuration contract but may not expose all hardware loop hazards.\n    - A2/A3 and A5 may use different concrete register widths or reset behavior; portable code must follow the documented PTO contract plus the selected target profile."
+}

@@ -1,0 +1,30 @@
+{
+  "category": "Predicate Generation And Algebra",
+  "constraints": "!!! warning \"Constraints\"\n    - **Operand widths**: All four predicate operands MUST have the same width.\n    - **Select semantic**: `sel_i = 1` \u2192 select `src0_i`; `sel_i = 0` \u2192 select `src1_i`.",
+  "cpp_intrinsic": "vector_bool dst;\nvector_bool src0;\nvector_bool src1;\nvector_bool mask;\npsel(dst, src0, src1, mask);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\nusing namespace pto;\n\nvoid select_predicate(RegBuf<predicate_t>& dst,\n                     const RegBuf<predicate_t>& src0,\n                     const RegBuf<predicate_t>& src1,\n                     const RegBuf<predicate_t>& sel) {\n    PSEL(dst, src0, src1, sel, sel);\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Illegal if predicate operand widths are not consistent.",
+  "instruction_set_path": [
+    "10. Scalar And Control Reference",
+    "Predicate Generation And Algebra"
+  ],
+  "mnemonic": "PSEL",
+  "name": "pto.psel",
+  "operands": [
+    "src0",
+    "src1",
+    "sel",
+    "mask"
+  ],
+  "outputs": [
+    "dst"
+  ],
+  "sources": [
+    "docs/isa/scalar/ops/predicate-generation-and-algebra/psel.md"
+  ],
+  "summary": "Predicate mux: select between two predicate sources based on a third predicate.",
+  "syntax": "%dst = pto.psel %src0, %src1, %sel, %mask : !pto.mask<G>, !pto.mask<G>, !pto.mask<G>, !pto.mask<G> -> !pto.mask<G>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    | Aspect | CPU Sim | A2/A3 | A5 |\n    |--------|:-------:|:------:|:--:|\n    | Predicate select | Simulated | Supported | Supported |"
+}

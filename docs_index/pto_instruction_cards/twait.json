@@ -1,0 +1,33 @@
+{
+  "category": "11. Communication ISA Reference",
+  "constraints": "!!! warning \"Constraints\"\n    - `GlobalSignalData::DType` must be `int32_t`.\n    - `signalData` must point to local address on the current NPU.\n    - For signal tensors: all elements must satisfy the condition simultaneously.\n    - Up to 5-D tensor shapes are supported.",
+  "cpp_intrinsic": "template <typename GlobalSignalData, typename... WaitEvents>\nPTO_INST void WAIT(GlobalSignalData &signalData, int32_t cmpValue, WaitCmp cmp, WaitEvents&... events);",
+  "examples": [
+    "#include <pto/comm/pto_comm_inst.hpp>\nusing namespace pto;\n\nvoid wait_ready(__gm__ int32_t* local_signal) {\n  comm::Signal sig(local_signal);\n  comm::WAIT(sig, 1, comm::WaitCmp::EQ);\n}"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - Using a non-local signal address is undefined behavior.\n    - The signal address must be accessible throughout the wait duration.",
+  "instruction_set_path": [
+    "11. Communication ISA Reference"
+  ],
+  "mnemonic": "TWAIT",
+  "name": "pto.twait",
+  "operands": [
+    "signalData",
+    "cmpValue",
+    "cmp",
+    "Value",
+    "EQ",
+    "NE",
+    "GT",
+    "GE",
+    "LT",
+    "LE"
+  ],
+  "outputs": [],
+  "sources": [
+    "docs/isa/comm/TWAIT.md"
+  ],
+  "summary": "Blocking wait until a signal (or all elements of a signal tensor) satisfies a comparison condition against a constant. Used with `pto.tnotify` for inter-NPU flag-based synchronization.",
+  "syntax": "",
+  "target_profile_restrictions": ""
+}

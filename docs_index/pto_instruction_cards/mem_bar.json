@@ -1,0 +1,27 @@
+{
+  "category": "Pipeline Sync",
+  "constraints": "!!! warning \"Constraints\"\n    - `pto.mem_bar` is meaningful only for UB aliasing hazards inside a vector-visible execution scope.\n    - The selected barrier type MUST be valid for the chosen target profile.\n    - This barrier does not replace cross-pipeline event ordering when data moves between MTE and vector pipelines.",
+  "cpp_intrinsic": "",
+  "examples": [
+    "pto.vsts %v0, %ub[%c0] : !pto.vreg<64xf32>, !pto.ptr<f32, ub>\npto.mem_bar \"VST_VLD\"\n%v1 = pto.vlds %ub[%c0] : !pto.ptr<f32, ub> -> !pto.vreg<64xf32>"
+  ],
+  "illegal_cases": "!!! danger \"Exceptions\"\n    - The verifier rejects illegal operand shapes, unsupported pipe or event identifiers, and attribute combinations that are not valid for the selected instruction set or target profile.\n    - Any additional illegality stated in the constraints section is also part of the contract.",
+  "instruction_set_path": [
+    "10. Scalar And Control Reference",
+    "Pipeline Sync"
+  ],
+  "mnemonic": "MEM_BAR",
+  "name": "pto.mem_bar",
+  "operands": [
+    "BARRIER_TYPE"
+  ],
+  "outputs": [
+    "None"
+  ],
+  "sources": [
+    "docs/isa/scalar/ops/pipeline-sync/mem-bar.md"
+  ],
+  "summary": "Order aliased Unified Buffer memory accesses inside a vector-visible execution scope.",
+  "syntax": "mem_bar \"BARRIER_TYPE\"",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    - CPU simulation preserves the visible ordering contract but may not expose every hardware hazard that motivates the barrier.\n    - A2/A3 and A5 may support different barrier classes or stronger/weaker default ordering."
+}

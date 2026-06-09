@@ -1,0 +1,31 @@
+{
+  "category": "Elementwise Tile Tile",
+  "constraints": "!!! warning \"Constraints\"\n    - `src` and `dst` MUST have compatible shapes (declared shape and valid region).\n    - The source/destination type pair MUST be supported by the selected target profile.\n    - The rounding mode MUST be supported for the given type pair.\n    - When a conversion path requires explicit scratch storage, callers MUST use one of the `tmp`-tile overloads.\n    - Disabling saturation may change overflow behavior for some backend/type paths, especially low-precision integer conversions.",
+  "cpp_intrinsic": "template <typename TileDataD, typename TileDataS, typename TmpTileData, typename... WaitEvents>\nPTO_INST RecordEvent TCVT(TileDataD &dst, TileDataS &src, TmpTileData &tmp, RoundMode mode,\n                          SaturationMode satMode, WaitEvents &... events);\n\ntemplate <typename TileDataD, typename TileDataS, typename TmpTileData, typename... WaitEvents>\nPTO_INST RecordEvent TCVT(TileDataD &dst, TileDataS &src, TmpTileData &tmp, RoundMode mode, WaitEvents &... events);\n\ntemplate <typename TileDataD, typename TileDataS, typename... WaitEvents>\nPTO_INST RecordEvent TCVT(TileDataD &dst, TileDataS &src, RoundMode mode,\n                          SaturationMode satMode, WaitEvents &... events);\n\ntemplate <typename TileDataD, typename TileDataS, typename... WaitEvents>\nPTO_INST RecordEvent TCVT(TileDataD &dst, TileDataS &src, RoundMode mode, WaitEvents &... events);",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\n\nusing namespace pto;\n\nvoid example_auto() {\n  using SrcT = Tile<TileType::Vec, float, 16, 16>;\n  using DstT = Tile<TileType::Vec, half, 16, 16>;\n  SrcT src;\n  DstT dst;\n  TCVT(dst, src, RoundMode::CAST_RINT);\n}"
+  ],
+  "illegal_cases": "",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Elementwise Tile Tile"
+  ],
+  "mnemonic": "TCVT",
+  "name": "pto.tcvt",
+  "operands": [
+    "src",
+    "dst",
+    "mode",
+    "satMode",
+    "tmp"
+  ],
+  "outputs": [
+    "dst"
+  ],
+  "sources": [
+    "docs/isa/tile/ops/elementwise-tile-tile/tcvt.md"
+  ],
+  "summary": "Elementwise type conversion with a specified rounding mode and optional saturation mode.",
+  "syntax": "%dst = tcvt %src {rmode = #pto.round_mode<CAST_RINT>} : !pto.tile<...> -> !pto.tile<...>",
+  "target_profile_restrictions": "??? info \"Target-Profile Restrictions\"\n    `pto.tcvt` preserves PTO-visible semantics across CPU simulation, A2/A3-class targets, and A5-class targets, but the exact set of supported type pairs, scratch requirements, and saturation behavior is backend-specific.\n\n    In this checkout, the fp16 \u2192 int8 non-saturating path is explicitly implemented through helper logic that may require temporary storage and row-aware sub-chunking."
+}

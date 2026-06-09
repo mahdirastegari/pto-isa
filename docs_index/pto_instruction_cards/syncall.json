@@ -1,0 +1,23 @@
+{
+  "category": "Sync And Config",
+  "constraints": "- Current implementation covers A2/A3 and A5 backends.\n- Software mode supports AIV-only, AIC-only, and AIC+AIV mixed kernels.\n  - AIC-only mode (A2/A3 only): AIC cores write and read GM slots directly via `copy_cbuf_to_gm` (L1\u2192GM DMA).\n  - A2/A3 mixed mode: AIC cores write GM slots via `copy_cbuf_to_gm` (L1\u2192GM DMA); AIV cores write via UB workspace.\n  - A5 mixed mode: A5 AIC (`dav-c310-cube`) lacks `copy_cbuf_to_gm`; instead delegates GM writes to AIV subblock 0 of the same block via `intra_block` signaling.\n- A5 AIC-only hardware mode is supported: AIC uses `ffts_cross_core_sync` + `wait_flag_dev` for cross-core sync without needing `set_ffts_base_addr`.\n- A5 AIC-only software mode is not supported: A5 AIC (`dav-c310-cube`) lacks an independent GM DMA write path (no `copy_cbuf_to_gm`), so GM-polling sync is infeasible.\n- A5 hardware MIX mode is unavailable: the runtime API `rtGetC2cCtrlAddr` returns `RT_ERROR_FEATURE_NOT_SUPPORT` (207000) on A5 (`CHIP_DAVID`), preventing FFTS base address retrieval.\n- Software mode requires all participating cores to enter the same barrier group in the same order; each core occupies 8 `int32_t` values in `gmWorkspace` for cache-line-isolated sync counting.\n- Software mode only provides barrier-arrival semantics. If GM data visibility across the barrier is needed, callers must ensure coherency explicitly.\n- The software-mode polling loop has a built-in back-off strategy (inserts `pipe_barrier` beyond a threshold) and timeout protection (default 1,000,000 iteration limit); on timeout the kernel-side breaks out, and CPU-SIM builds trigger an assertion.\n- Hardware AIV-only `SYNCALL()` requires `.ascend.meta.<kernel>_mix_aiv` metadata in the kernel ELF so the runtime schedules it as `KERNEL_TYPE_MIX_AIV_1_0`.\n- AIC-only kernels must call `__builtin_cce_kernel_type_set(1)` (corresponding to `KERNEL_TYPE_AIC_ONLY`) at the beginning of the function body for correct runtime scheduling.\n- `SYNCALL` does not return a `RecordEvent` and is not used as a dependency in `Event<SrcOp, DstOp>`.\n- In auto mode, consistent with existing sync instructions, no hardware synchronization is emitted.",
+  "cpp_intrinsic": "",
+  "examples": [
+    "#include <pto/pto-inst.hpp>\n\nusing namespace pto;\n\n// In auto mode SYNCALL is a no-op (same as TSYNC etc. under auto)\nvoid example_auto_noop() {\n  SYNCALL();  // Does not trigger FFTS\n}"
+  ],
+  "illegal_cases": "",
+  "instruction_set_path": [
+    "8. Tile Instruction Reference",
+    "Sync And Config"
+  ],
+  "mnemonic": "SYNCALL",
+  "name": "pto.syncall",
+  "operands": [],
+  "outputs": [],
+  "sources": [
+    "docs/isa/tile/ops/sync-and-config/syncall.md"
+  ],
+  "summary": "`SYNCALL` is a cross-core synchronization barrier supporting A2/A3 and A5 NPU backends. The template parameter `SyncCoreType` selects the core-type mode:\n\n- **AIV-only** (default): `SYNCALL()` synchronizes all AIV cores.\n- **AIC-only**: `SYNCALL<SyncCoreType::AICOnly>()` synchronizes all AIC cores (A2/A3 supports both hardware and software modes; A5 supports hardware mode only).\n- **MIX (AIC+AIV)**: `SYNCALL<SyncCoreType::Mix>()` synchronizes mixed AIC and AIV cores.\n\n`SyncAllMode` (specified explicitly in workspace-bearing overloads) selects **hardware mode (FFTS)** or **software mode (GM polling)**. The workspace-free overload corresponds to the hardware path.",
+  "syntax": "",
+  "target_profile_restrictions": ""
+}
