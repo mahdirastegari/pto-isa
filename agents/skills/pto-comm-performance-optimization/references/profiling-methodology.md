@@ -1,19 +1,19 @@
-# 性能分析方法
+# Performance analysis method
 
-## 带宽估算
+## Bandwidth estimation
 
 ```cpp
-// RS 阶段数据量
+// RS stage data volume
 size_t rs_bytes = (nranks - 1) * total_data_bytes / nranks;
 
-// AG 阶段数据量
+//Amount of data in AG stage
 size_t ag_bytes = (nranks - 1) * total_data_bytes / nranks;
 
-// 实际带宽
+//actual bandwidth
 float rs_bw_gbps = rs_bytes / (rs_time_us * 1e-6) / 1e9;
 float ag_bw_gbps = ag_bytes / (ag_time_us * 1e-6) / 1e9;
 
-// 理论峰值带宽（示例：HCCS 节点内 ~30GB/s per link）
+// Theoretical peak bandwidth (example: ~30GB/s within HCCS node)
 float peak_bw_gbps = 30.0;
 float utilization = actual_bw / peak_bw_gbps * 100;
 printf("BW utilization: %.1f%%\n", utilization);
@@ -21,7 +21,7 @@ printf("BW utilization: %.1f%%\n", utilization);
 
 ---
 
-## 性能报告模板
+## Performance report template
 
 ```cpp
 void PrintPerfReport(float comp_us, float pipe_us, size_t data_bytes, int nranks)
@@ -49,9 +49,9 @@ void PrintPerfReport(float comp_us, float pipe_us, size_t data_bytes, int nranks
 
 ---
 
-## Profiling 方法
+## Profiling method
 
-### Host 侧 Event 计时
+### Host side Event timing
 
 ```cpp
 aclrtEvent start, end;
@@ -99,35 +99,35 @@ aclrtEventElapsedTime(&seq_ms, start, end);
 
 ---
 
-## 性能迭代策略
+## Performance iteration strategy
 
 ```
-1. 建立 baseline（compute-only + sequential）
-2. 测量 pipelined 性能
-3. 计算 speedup 和 overlap%
-4. 如果 overlap < 80%：
-   a. 检查通信是否太早开始（队列空转）
-   b. 检查通信是否太晚开始（Tile 太大）
-   c. 检查 Block 负载均衡
-5. 如果带宽利用率 < 60%：
-   a. 增大 Tile 以减少传输次数
-   b. 使用乒乓双缓冲
-   c. 检查数据对齐
-6. 重复优化迭代
+1. Establish baseline (compute-only + sequential)
+2. Measuring pipelined performance
+3. Calculate speedup and overlap%
+4. If overlap < 80%:
+   a. Check if communication starts too early (queue idling)
+   b. Check whether communication starts too late (Tile is too large)
+   c. Check Block load balancing
+5. If bandwidth utilization < 60%:
+   a. Increase Tile to reduce the number of transmissions
+   b. Use pingpong double buffering
+   c. Check data alignment
+6. Repeat optimization iterations
 ```
 
 ---
 
-## msprof 集成
+## msprof integration
 
-对于更深入的 profiling，可使用 `msprof` 采集硬件 timeline：
+For more in-depth profiling, use `msprof` to collect the hardware timeline:
 
 ```bash
-# 采集 kernel 执行 timeline
+# Collect kernel execution timeline
 msprof --output=./prof_data --application="mpirun -np 8 ./my_operator"
 
-# 分析结果
+# Analyze results
 msprof --export=timeline --output=./prof_data
 ```
 
-`msprof` 可展示各 AICore 的 MTE2/MTE3/Cube/Vec 管道占用率，帮助定位重叠空洞。
+`msprof` can display the MTE2/MTE3/Cube/Vec pipeline occupancy rate of each AICore and help locate overlapping holes.

@@ -1,8 +1,8 @@
-# 正确性验证方法
+# Correctness verification method
 
-## Golden 数据生成
+## Golden data generation
 
-### Python Golden 生成脚本模板
+### Python Golden generation script template
 
 ```python
 #!/usr/bin/python3
@@ -11,7 +11,7 @@ import numpy as np
 np.random.seed(42)
 
 def gen_reduce_scatter_golden(nranks, M, N, dtype=np.float16):
-    """生成 ReduceScatter 的 golden 数据"""
+    """Generate golden data of ReduceScatter"""
     inputs = []
     for r in range(nranks):
         data = np.random.randn(M, N).astype(dtype)
@@ -22,11 +22,11 @@ def gen_reduce_scatter_golden(nranks, M, N, dtype=np.float16):
 
     for r in range(nranks):
         golden = np.zeros_like(summed)
-        # 按 tiling 策略填充 rank r 应该持有的结果
+        # Fill in the results that rank r should hold according to the tiling strategy
         golden.tofile(f"rank{r}_golden.bin")
 
 def gen_allgather_golden(nranks, M, N, dtype=np.float16):
-    """生成 AllGather 的 golden 数据：每个 rank 持有完整的 summed 结果"""
+    """Generate AllGather's golden data: each rank holds the complete summed result"""
     inputs = []
     for r in range(nranks):
         data = np.fromfile(f"rank{r}_input.bin", dtype=dtype).reshape(M, N)
@@ -43,7 +43,7 @@ if __name__ == "__main__":
     gen_allgather_golden(nranks, M, N)
 ```
 
-### Golden 数据组织
+### Golden Data Organization
 
 ```
 testdata/
@@ -56,9 +56,9 @@ testdata/
 └── config.json
 ```
 
-### 数据类型映射
+### Data type mapping
 
-| Python numpy | C++ 类型 | ACL 类型 |
+| Python numpy | C++ types | ACL types |
 |-------------|---------|----------|
 | `np.float16` | `half` | `aclFloat16` |
 | `np.float32` | `float` | `float` |
@@ -67,7 +67,7 @@ testdata/
 
 ---
 
-## 验证函数模板
+## Verification function template
 
 ```cpp
 template <typename T>
@@ -103,32 +103,32 @@ bool VerifyResult(const T *actual, const T *expected, size_t count,
 
 ---
 
-## 精度标准
+## Accuracy standard
 
-| 数据类型 | 推荐 atol | 推荐 rtol | 说明 |
+| Data type | Recommend atol | Recommend rtol | Description |
 |---------|----------|----------|------|
-| float (FP32) | 1e-5 | 1e-4 | 高精度 |
-| half (FP16) | 1.0 | 0.01 | AtomicAdd 累积误差较大 |
-| int32 / int16 | 0 | 0 | 精确匹配 |
+| float (FP32) | 1e-5 | 1e-4 | High precision |
+| half (FP16) | 1.0 | 0.01 | AtomicAdd has a large cumulative error |
+| int32 / int16 | 0 | 0 | exact match |
 
-**FP16 AtomicAdd 精度注意**：
-- 多 rank AtomicAdd 累积会引入浮点误差
-- rank 数越多，累积误差越大
-- 建议 FP16 使用 `atol=1.0, rtol=0.01` 或更宽松的阈值
+**FP16 AtomicAdd precision note**:
+- Multi-rank AtomicAdd accumulation will introduce floating point errors
+- The greater the number of ranks, the greater the cumulative error
+- It is recommended that FP16 use `atol=1.0, rtol=0.01` or looser thresholds
 
 ---
 
-## 分阶段验证
+## Phased verification
 
-对于多阶段算子（如 RS + Barrier + AG），建议分阶段验证：
+For multi-stage operators (such as RS + Barrier + AG), it is recommended to verify in stages:
 
 ```cpp
-// 阶段 1 验证：RS 完成后，检查 reduced_output
+// Phase 1 verification: after RS completes, check reduced_output
 RunReduceScatterOnly(...);
 aclrtSynchronizeStream(stream);
 bool rs_pass = VerifyReduceScatter(reduced_output, rs_golden);
 
-// 阶段 2 验证：完整 AllReduce 后，检查最终结果
+// Phase 2 Verification: After complete AllReduce, check the final result
 RunFullAllReduce(...);
 aclrtSynchronizeStream(stream);
 bool ar_pass = VerifyAllReduce(reduced_output, ar_golden);
@@ -136,7 +136,7 @@ bool ar_pass = VerifyAllReduce(reduced_output, ar_golden);
 
 ---
 
-## main.cpp 模板（多 rank 测试）
+## main.cpp template (multi-rank test)
 
 ```cpp
 #include "acl/acl.h"
@@ -166,7 +166,7 @@ int main(int argc, char **argv)
 
     size_t dataSize = ROWS * COLS * sizeof(half);
     uint8_t *localBuf, *remoteBuf;
-    // ... 获取通信窗口地址 ...
+    // ... get the communication window address ...
 
     std::vector<half> hostData(ROWS * COLS);
     for (int i = 0; i < ROWS * COLS; i++) hostData[i] = (half)(rank * 1000 + i);
@@ -184,7 +184,7 @@ int main(int argc, char **argv)
 
     bool pass = true;
     for (int i = 0; i < ROWS * COLS; i++) {
-        half expected = /* 根据通信语义计算 */;
+        half expected = /* calculated based on communication semantics */;
         if (abs((float)result[i] - (float)expected) > 1e-3) {
             printf("FAIL: rank %d, idx %d, got %f, expected %f\n",
                    rank, i, (float)result[i], (float)expected);

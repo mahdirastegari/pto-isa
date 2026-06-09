@@ -1,184 +1,184 @@
 ---
-name: PTO指令文档更新模式
-description: PTO ISA 新增指令时需要更新的文档文件和位置模式总结。根据 docs/assembly/README.md 中的分类动态选择需要修改的汇编文件。触发：新增 PTO 指令（如 TPOW、TPOWS）后需要同步更新文档时。
+name: PTO instruction document update mode
+description: Summary of document files and location modes that need to be updated when adding new instructions to PTO ISA. Dynamically select the assembly file that needs to be modified based on the classification in docs/assembly/README.md. Trigger: When the document needs to be updated synchronously after adding a new PTO instruction (such as TPOW, TPOWS).
 license: CANN Open Software License Agreement Version 2.0
 ---
 
-# PTO指令文档更新模式
+# PTO instruction document update mode
 
-此 skill 总结了为 PTO ISA 添加新指令（如 TPOW、TPOWS）时需要更新的文档文件和位置模式。
+This skill summarizes the documentation files and location patterns that need to be updated when adding new instructions (such as TPOW, TPOWS) to the PTO ISA.
 
-## 适用场景
+## Applicable scenarios
 
-当新增 PTO 指令后，需要同步更新相关文档时使用此 skill。使用 `git status` 查看当前 staging 的文件列表来确认所有需要修改的文件。
+After adding a PTO instruction, use this skill when related documents need to be updated simultaneously. Use `git status` to view the current staging file list to confirm all files that need to be modified.
 
-## Git Staged 文件分类
+## Git Staged file classification
 
-### 新增文件（需预先创建）
+### Add new files (need to be created in advance)
 
-| 类型 | 说明 |
+| Type | Description |
 |------|------|
-| 指令diagrams | `docs/figures/isa/{指令名}.svg` - 指令操作示意图 |
-| 指令文档 | `docs/isa/{指令名}.md` - 详细指令文档（英文） |
-| 指令文档 | `docs/isa/{指令名}_zh.md` - 详细指令文档（中文） |
+| Command diagrams | `docs/figures/isa/{command name}.svg` - Command operation diagram |
+| Command documentation | `docs/isa/{command name}.md` - Detailed command documentation (English) |
+| Instruction document | `docs/isa/{instruction name}_zh.md` - Detailed instruction document (Chinese) |
 
-### 修改文件（需同步更新）
+### Modify files (need to be updated simultaneously)
 
-| 类型 | 说明 |
+| Type | Description |
 |------|------|
-| ISA主索引 | `docs/PTOISA.md` - ISA索引表格 |
-| ISA主索引 | `docs/PTOISA_zh.md` - ISA索引表格（中文） |
-| ISA参考目录 | `docs/isa/README.md` - 按分类排序的指令列表 |
-| ISA参考目录 | `docs/isa/README_zh.md` - 按分类排序的指令列表（中文） |
-| 菜单文档 | `docs/menu_apis.md` - 按分类排序的中文链接 |
-| 汇编参考 | `docs/assembly/<类别>-ops.md` - 根据指令类型动态选择 |
-| 指令族矩阵 | `docs/mkdocs/src/manual/appendix-d-instruction-family-matrix.md` - 指令族矩阵 |
-| 指令族矩阵 | `docs/mkdocs/src/manual/appendix-d-instruction-family-matrix_zh.md` - 指令族矩阵（中文） |
-| include索引 | `include/README.md` - 实现状态表格 |
-| include索引 | `include/README_zh.md` - 实现状态表格（中文） |
+| ISA Master Index | `docs/PTOISA.md` - ISA Index Table |
+| ISA Master Index | `docs/PTOISA_zh.md` - ISA Index Table (Chinese) |
+| ISA Reference Directory | `docs/isa/README.md` - List of instructions sorted by category |
+| ISA Reference Directory | `docs/isa/README_zh.md` - List of instructions sorted by category (Chinese) |
+| Menu documentation | `docs/menu_apis.md` - Chinese links sorted by category |
+| Assembly reference | `docs/assembly/<category>-ops.md` - dynamic selection based on instruction type |
+| Instruction family matrix | `docs/mkdocs/src/manual/appendix-d-instruction-family-matrix.md` - Instruction family matrix |
+| Instruction Family Matrix | `docs/mkdocs/src/manual/appendix-d-instruction-family-matrix_zh.md` - Instruction Family Matrix (Chinese) |
+| include index | `include/README.md` - implementation status table |
+| include index | `include/README_zh.md` - Implementation status table (Chinese) |
 
 ---
 
-## 动态选择汇编文档
+## Dynamically select assembly documents
 
-根据 `docs/assembly/README.md` 中的 **### 2. PTO Tile Operation Categories** 决定需要修改的汇编文件。
+Determine the assembly file that needs to be modified according to **### 2. PTO Tile Operation Categories** in `docs/assembly/README.md`.
 
-### 汇编文件列表（对应分类）
+### Assembly file list (corresponding classification)
 
-| 分类 | 汇编文件 | 说明 |
+| Classification | Assembly File | Description |
 |------|----------|------|
-| Elementwise (Tile-Tile) | `elementwise-ops.md` | tile-tile 逐元素操作 |
-| Tile-Scalar / Tile-Immediate | `tile-scalar-ops.md` | tile-标量操作 |
-| Axis Reduce / Expand | `axis-ops.md` | 轴归约/扩展操作 |
-| Memory (GM ↔ Tile) | `memory-ops.md` | 内存操作 |
-| Matrix Multiply | `matrix-ops.md` | 矩阵乘操作 |
-| Data Movement / Layout | `data-movement-ops.md` | 数据搬运/布局操作 |
-| Complex | `complex-ops.md` | 复杂操作 |
-| Manual Resource Binding | `manual-binding-ops.md` | 手动资源绑定操作 |
-| Scalar Arithmetic | `scalar-arith-ops.md` | 标量算术操作 |
-| Control Flow | `control-flow-ops.md` | 控制流操作 |
-| Auxiliary Functions | `nonisa-ops.md` | 辅助函数操作 |
+| Elementwise (Tile-Tile) | `elementwise-ops.md` | tile-tile element-by-element operation |
+| Tile-Scalar / Tile-Immediate | `tile-scalar-ops.md` | tile-scalar operations |
+| Axis Reduce / Expand | `axis-ops.md` | Axis reduce/expand operations |
+| Memory (GM ↔ Tile) | `memory-ops.md` | Memory operations |
+| Matrix Multiply | `matrix-ops.md` | Matrix multiplication operation |
+| Data Movement / Layout | `data-movement-ops.md` | Data Movement/Layout Operations |
+| Complex | `complex-ops.md` | Complex operations |
+| Manual Resource Binding | `manual-binding-ops.md` | Manual resource binding operation |
+| Scalar Arithmetic | `scalar-arith-ops.md` | Scalar arithmetic operations |
+| Control Flow | `control-flow-ops.md` | Control flow operations |
+| Auxiliary Functions | `nonisa-ops.md` | Auxiliary function operations |
 
-### 动态选择规则
+### Dynamic selection rules
 
-1. **确定指令分类** - 查看 `docs/assembly/README.md` 中的分类定义
-2. **选择对应文件** - 根据分类选择对应的 `<类别>-ops.md` 文件
-3. **更新计数** - 更新该文件中 `**Total Operations:** N` 的计数
-4. **添加章节** - 在该分类最后一个指令后插入新指令章节
+1. **Determine the instruction classification** - View the classification definition in `docs/assembly/README.md`
+2. **Select the corresponding file** - Select the corresponding `<category>-ops.md` file according to the classification
+3. **Update Count** - Update the count of `**Total Operations:** N` in this file
+4. **Add Chapter** - Insert a new instruction chapter after the last instruction in this category
 
 ---
 
-## 更新模式详解
+## Detailed explanation of update mode
 
-### 1. ISA 主索引文件
+### 1. ISA main index file
 
 #### docs/PTOISA.md / docs/PTOISA_zh.md
-- **位置**: 指令索引表格
-- **分类**: 
-  - 逐元素（Tile-Tile）指令 → 插在 `TFMOD` 后
-  - Tile-标量 / Tile-立即数 → 插在 `TSUBSC` 后
+- **Position**: Instruction index table
+- **Category**:
+  - Element-by-element (Tile-Tile) instructions → inserted after `TFMOD`
+  - Tile-scalar / Tile-immediate → inserted after `TSUBSC`
 
 #### include/README.md / include/README_zh.md
-- **位置**: 实现状态表格（按字母序）
-- **分类**:
-  - TPOW → 插在 `TPRELU` 和 `TPUT` 之间
-  - TPOWS → 插在 `TPUT_ASYNC` 和 `TQUANT` 之间
+- **Position**: Implementation status table (in alphabetical order)
+- **Category**:
+  - TPOW → inserted between `TPRELU` and `TPUT`
+  - TPOWS → inserted between `TPUT_ASYNC` and `TQUANT`
 
-### 2. ISA 参考目录
+### 2. ISA Reference Directory
 
 #### docs/isa/README.md / docs/isa/README_zh.md
-- **位置**: 按分类排序的指令列表
-- **分类**:
-  - Elementwise (Tile-Tile) → 插在 `TFMOD` 后
-  - Tile-Scalar / Tile-Immediate → 插在 `TSUBSC` 后
+- **Position**: List of instructions sorted by category
+- **Category**:
+  - Elementwise (Tile-Tile) → inserted after `TFMOD`
+  - Tile-Scalar / Tile-Immediate → inserted after `TSUBSC`
 
-### 3. 菜单文档
+### 3. Menu documentation
 
 #### docs/menu_apis.md
-- **位置**: 按分类排序的中文链接列表
-- **同 ISA 参考目录结构**
+- **Position**: Chinese link list sorted by category
+- **Same as ISA reference directory structure**
 
-### 4. 汇编文档（动态选择）
+### 4. Assembly document (dynamic selection)
 
-根据指令类型选择对应的文件：
+Select the corresponding file according to the instruction type:
 
-| 指令类型 | 目标文件 | 插入位置 |
+| Instruction type | Target file | Insertion position |
 |----------|----------|----------|
-| TPOW (Elementwise) | `elementwise-ops.md` | TFMOD 后 |
-| TPOWS (Tile-Scalar) | `tile-scalar-ops.md` | TSU BSC 后 |
-| TROWSUM (Axis) | `axis-ops.md` | 最后一个 Axis 指令后 |
-| TLOAD (Memory) | `memory-ops.md` | 最后一个 Memory 指令后 |
-| TMATMUL (Matrix) | `matrix-ops.md` | 最后一个 Matrix 指令后 |
-| TMOV (Data Movement) | `data-movement-ops.md` | 最后一个 Data Movement 指令后 |
-| TQUANT (Complex) | `complex-ops.md` | 最后一个 Complex 指令后 |
-| TASSIGN (Manual Binding) | `manual-binding-ops.md` | 最后一个 Manual 指令后 |
+| TPOW (Elementwise) | `elementwise-ops.md` | After TFMOD |
+| TPOWS (Tile-Scalar) | `tile-scalar-ops.md` | TSU BSC post |
+| TROWSUM (Axis) | `axis-ops.md` | after the last Axis directive |
+| TLOAD (Memory) | `memory-ops.md` | After the last Memory instruction |
+| TMATMUL (Matrix) | `matrix-ops.md` | after the last Matrix directive |
+| TMOV (Data Movement) | `data-movement-ops.md` | After the last Data Movement directive |
+| TQUANT (Complex) | `complex-ops.md` | after the last Complex directive |
+| TASSIGN (Manual Binding) | `manual-binding-ops.md` | After the last Manual directive |
 
-### 5. 指令族矩阵
+### 5. Instruction family matrix
 
 #### docs/mkdocs/src/manual/appendix-d-instruction-family-matrix.md
-- **位置**: D.2 覆盖统计表 + D.4 家族矩阵表
-- **D.2 更新示例**:
+- **Position**: D.2 coverage statistics table + D.4 family matrix table
+- **D.2 Update Example**:
   ```
   | Elementwise (Tile-Tile) | 28 → 29 |
   | Tile-Scalar / Tile-Immediate | 19 → 20 |
   | Total | 126 → 128 |
   ```
-- **D.4 更新**:
-  - 在对应分类的最后一条目后插入新指令
+- **D.4 Update**:
+  - Insert new instructions after the last entry of the corresponding category
 
 #### docs/mkdocs/src/manual/appendix-d-instruction-family-matrix_zh.md
-- **同英文版本**
+- **Same as English version**
 
 ---
 
-## 常见新增指令分类与插入位置
+## Common new instruction classification and insertion location
 
-### Tile-Tile (逐元素双Tile)
-- **插入位置**: `TFMOD` 之后
-- **对应文件**: `elementwise-ops.md`
-- **示例**: TPOW
+### Tile-Tile (element-by-element double Tile)
+- **INSERT POSITION**: after `TFMOD`
+- **Corresponding file**: `elementwise-ops.md`
+- **Example**: TPOW
 
-### Tile-Scalar (Tile与标量)
-- **插入位置**: `TSUBSC` 之后
-- **对应文件**: `tile-scalar-ops.md`
-- **示例**: TPOWS
+### Tile-Scalar (Tile and scalar)
+- **Insert position**: after `TSUBSC`
+- **Corresponding file**: `tile-scalar-ops.md`
+- **Example**: TPOWS
 
 ### Axis Reduce / Expand
-- **插入位置**: 最后一个 Axis 指令之后
-- **对应文件**: `axis-ops.md`
+- **Insertion position**: after the last Axis directive
+- **Corresponding file**: `axis-ops.md`
 
 ### Memory (GM ↔ Tile)
-- **插入位置**: 最后一个 Memory 指令之后
-- **对应文件**: `memory-ops.md`
+- **Insertion position**: after the last Memory instruction
+- **Corresponding file**: `memory-ops.md`
 
 ---
 
-## 更新检查清单
+## Update checklist
 
-### 新增文件（预先创建）
-- [ ] `docs/figures/isa/{新指令}.svg` - 指令操作示意图
-- [ ] `docs/isa/{新指令}.md` - 详细指令文档（英文）
-- [ ] `docs/isa/{新指令}_zh.md` - 详细指令文档（中文）
+### Add new files (pre-created)
+- [ ] `docs/figures/isa/{new command}.svg` - Schematic diagram of command operation
+- [ ] `docs/isa/{new command}.md` - Detailed command document (English)
+- [ ] `docs/isa/{New Command}_zh.md` - Detailed command document (Chinese)
 
-### 修改文件（同步更新）
-- [ ] `docs/PTOISA.md` - ISA主索引
-- [ ] `docs/PTOISA_zh.md` - ISA主索引（中文）
-- [ ] `include/README.md` - include索引
-- [ ] `include/README_zh.md` - include索引（中文）
-- [ ] `docs/isa/README.md` - ISA参考目录
-- [ ] `docs/isa/README_zh.md` - ISA参考目录（中文）
-- [ ] `docs/menu_apis.md` - 菜单文档
-- [ ] `docs/assembly/<类别>-ops.md` - 动态选择的汇编文件（英文+中文）
-- [ ] `docs/mkdocs/src/manual/appendix-d-instruction-family-matrix.md` - 指令族矩阵
-- [ ] `docs/mkdocs/src/manual/appendix-d-instruction-family-matrix_zh.md` - 指令族矩阵（中文）
+### Modify files (synchronous updates)
+- [ ] `docs/PTOISA.md` - ISA main index
+- [ ] `docs/PTOISA_zh.md` - ISA Main Index (Chinese)
+- [ ] `include/README.md` - include index
+- [ ] `include/README_zh.md` - include index (Chinese)
+- [ ] `docs/isa/README.md` - ISA reference directory
+- [ ] `docs/isa/README_zh.md` - ISA reference directory (Chinese)
+- [ ] `docs/menu_apis.md` - Menu documentation
+- [ ] `docs/assembly/<category>-ops.md` - dynamically selected assembly file (English + Chinese)
+- [ ] `docs/mkdocs/src/manual/appendix-d-instruction-family-matrix.md` - Instruction family matrix
+- [ ] `docs/mkdocs/src/manual/appendix-d-instruction-family-matrix_zh.md` - Instruction Family Matrix (Chinese)
 
 ---
 
-## 注意事项
+## Notes
 
-1. **英文+中文**: 每个文件都有中英文两个版本，需要同步更新
-2. **动态选择**: 根据 `docs/assembly/README.md` 选择的分类来确定需要修改的汇编文件
-3. **计数变化**: 需要同时更新 Operation Count（分类小计）和 Total（总计）
-4. **详细指令文档**: 需要预先创建在 `docs/isa/` 目录下
-5. **diagrams**: 需要预先创建在 `docs/figures/isa/` 目录下
-6. 使用 `git status` 可以查看当前 staging 的文件列表，这是确认所有需要修改文件的最佳方式
+1. **English + Chinese**: Each file has both Chinese and English versions and needs to be updated simultaneously.
+2. **Dynamic Selection**: Determine the assembly file that needs to be modified based on the category selected in `docs/assembly/README.md`
+3. **Count changes**: Operation Count (category subtotal) and Total (total) need to be updated at the same time
+4. **Detailed instruction document**: needs to be created in advance in the `docs/isa/` directory
+5. **diagrams**: need to be created in advance in the `docs/figures/isa/` directory
+6. Use `git status` to view the current staging file list. This is the best way to confirm all files that need to be modified.

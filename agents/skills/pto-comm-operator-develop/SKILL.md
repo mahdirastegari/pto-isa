@@ -1,147 +1,147 @@
 ---
-name: PTO-COMM 通信算子开发指南
-description: 基于 PTO-COMM ISA 开发通信算子的完整指南。涵盖 Host-Device 架构、文件结构、通信模式（P2P/集合通信/通算融合）、同步策略、信号矩阵设计、多 Block 调度、远端地址管理、构建系统配置等。触发：需要使用 PTO-COMM 开发通信算子、设计通信 kernel、编写 Host 侧代码、配置 CMakeLists 时。
+name: PTO-COMM Communication Operator Development Guide
+description: A complete guide to developing communication operators based on PTO-COMM ISA. Covers Host-Device architecture, file structure, communication mode (P2P/aggregated communication/general computing integration), synchronization strategy, signal matrix design, multi-block scheduling, remote address management, construction system configuration, etc. Trigger: When you need to use PTO-COMM to develop communication operators, design communication kernel, write Host-side code, and configure CMakeLists.
 license: CANN Open Software License Agreement Version 2.0
 ---
 
-# PTO-COMM 通信算子开发指南
+# PTO-COMM Communication Operator Development Guide
 
-## 定位
+## Positioning
 
-本 Skill 是**流程型 Skill**，指导从零开发一个基于 PTO-COMM ISA 的通信算子。
+This Skill is a **process Skill** that guides the development of a communication operator based on PTO-COMM ISA from scratch.
 
 ---
 
-## 架构概述
+## Architecture Overview
 
-### Host-Device 分离
+### Host-Device separation
 
 ```
-Host 侧                          Device 侧
+Host side Device side
 ┌─────────────────┐              ┌─────────────────────────┐
 │ main.cpp        │              │ comm_kernel.cpp         │
-│ - MPI 初始化    │   启动       │ - __global__ AICORE     │
-│ - ACL 初始化    │──kernel──→   │ - TPUT/TGET/TNOTIFY/... │
-│ - HCCL 通信域   │              │ - 信号同步逻辑          │
-│ - 内存分配      │              ├─────────────────────────┤
-│ - Kernel 启动   │              │ compute_kernel.cpp      │
-│ - 结果验证      │   启动       │ - __global__ AICORE     │
+│ - MPI initialization │ Startup │ - __global__ AICORE │
+│ - ACL initialization │──kernel──→ │ - TPUT/TGET/TNOTIFY/... │
+│ - HCCL communication domain │ │ - Signal synchronization logic │
+│ - Memory Allocation │ ├──────────────────────────┤
+│ - Kernel startup │ │ compute_kernel.cpp │
+│ - Result Verification │ Startup │ - __global__ AICORE │
 │                 │──kernel──→   │ - TMATMUL/TADD/...      │
-└─────────────────┘              │ - 计算逻辑              │
+└──────────────────┘ │ - Calculation logic │
                                  └─────────────────────────┘
 ```
 
-**关键原则**：
-- **Host 侧**：负责 MPI/HCCL 通信域初始化、内存分配、远端地址获取、kernel 启动和结果验证
-- **Device 侧**：使用 PTO-COMM 指令执行实际的数据传输和同步
-- 计算和通信可以分别编译为独立的 `.so` 文件
+**Key Principles**:
+- **Host side**: Responsible for MPI/HCCL communication domain initialization, memory allocation, remote address acquisition, kernel startup and result verification
+- **Device side**: Use the PTO-COMM instruction to perform the actual data transfer and synchronization
+- Computation and communication can be compiled into separate `.so` files
 
 ---
 
-## 编程模型选择
+## Programming model selection
 
 ```
-需要 NPU 间通信？
-├── 仅需基本 P2P 传输
-│   └── 使用 TPUT/TGET → 参考 "开发模式" 之 P2P 模式
+Need inter-NPU communication?
+├── Only basic P2P transfer required
+│ └── Use TPUT/TGET → Refer to P2P mode in "Development Mode"
 │
-├── 需要集合通信（AllReduce/AllGather/ReduceScatter 等）
-│   ├── 可用内置集合指令完成？
-│   │   └── 使用 TGATHER/TSCATTER/TBROADCAST/TREDUCE → 参考 "开发模式" 之集合通信模式
-│   └── 需要自定义算法（如 RS+AG 组合 AllReduce）？
-│       └── 使用 TPUT<AtomicAdd> + TNOTIFY/TWAIT 组合 → 参考 "开发模式" 之自定义集合通信
+├── Requires collective communication (AllReduce/AllGather/ReduceScatter, etc.)
+│ ├── Can this be done using the built-in set command?
+│ │ └── Use TGATHER/TSCATTER/TBROADCAST/TREDUCE → Refer to the collective communication mode of "Development Mode"
+│ └── Need a custom algorithm (such as RS+AG combination AllReduce)?
+│ └── Use TPUT<AtomicAdd> + TNOTIFY/TWAIT combination → Refer to "Development Mode" for custom collective communication
 │
-├── 需要通算融合（计算+通信重叠）
-│   └── 使用双 kernel（cube + vec）+ 队列/信号同步 → 参考 "开发模式" 之通算融合模式
+├── Requires comprehensive computing fusion (computing + communication overlap)
+│ └── Use dual kernel (cube + vec) + queue/signal synchronization → Refer to the general computing fusion mode of "Development Mode"
 │
-└── 需要异步大块传输
-    └── 使用 TPUT_ASYNC/TGET_ASYNC → 参考 pto-comm-isa-reference
+└── Requires asynchronous bulk transfer
+    └── Use TPUT_ASYNC/TGET_ASYNC → refer to pto-comm-isa-reference
 ```
 
 ---
 
-## 文件结构与命名规范
+## File structure and naming convention
 
 ```
 kernels/manual/<platform>/<operator_name>/
-├── comm_kernel.cpp           # 通信 kernel（Vec 架构）
-├── compute_kernel.cpp        # 计算 kernel（Cube 架构，如需融合）
-├── config.h                  # Tiling 配置、Block 数量、常量定义
-├── kernel_launchers.h        # Host 侧 kernel 启动函数声明
-├── common.hpp                # 远端地址计算等共享工具
-├── main.cpp                  # Host 侧：初始化、启动、验证
-├── CMakeLists.txt            # 构建配置
-├── run.sh                    # 运行脚本
-└── README_zh.md              # 算子文档
+├── comm_kernel.cpp # Communication kernel (Vec architecture)
+├── compute_kernel.cpp # Compute kernel (Cube architecture, if integration is required)
+├── config.h # Tiling configuration, Block number, constant definition
+├── kernel_launchers.h # Host side kernel startup function declaration
+├── common.hpp # Sharing tools such as remote address calculation
+├── main.cpp # Host side: initialization, startup, verification
+├── CMakeLists.txt # Build configuration
+├── run.sh # Run script
+└── README_zh.md # Operator document
 ```
 
 ---
 
-## 核心开发模式
+## Core development model
 
-四种开发模式的完整代码示例和同步策略详见：
+For complete code examples and synchronization strategies for the four development modes, see:
 
-**详细指南**：[开发模式详解](references/development-patterns.md)
+**Detailed Guide**: [Detailed explanation of development patterns](references/development-patterns.md)
 
-| 模式 | 指令组合 | 适用场景 |
+| Mode | Command combination | Applicable scenarios |
 |------|---------|---------|
-| P2P | TPUT/TGET | 两 NPU 间数据传输 |
-| 集合通信 | TGATHER/TSCATTER/TBROADCAST/TREDUCE | 标准多 rank 操作 |
-| 自定义集合通信 | TPUT\<AtomicAdd\> + TNOTIFY/TWAIT | RS+AG 组合实现 AllReduce |
-| 通算融合 | 双 kernel + 队列 + 信号矩阵 | 计算与通信重叠 |
+| P2P | TPUT/TGET | Data transmission between two NPUs |
+| Collective communication | TGATHER/TSCATTER/TBROADCAST/TREDUCE | Standard multi-rank operations |
+| Customized collection communication | TPUT\<AtomicAdd\> + TNOTIFY/TWAIT | RS+AG combination to implement AllReduce |
+| General computing fusion | Dual kernel + queue + signal matrix | Computation and communication overlap |
 
 ---
 
-## 同步策略与信号设计
+## Synchronization strategy and signal design
 
-信号矩阵布局、DeviceBarrier 实现、流水线同步详见：
+For details on signal matrix layout, DeviceBarrier implementation, and pipeline synchronization, see:
 
-**详细指南**：[信号与同步设计](references/signal-design.md)
+**Detailed Guide**: [Signal and Synchronization Design](references/signal-design.md)
 
-### 快速参考
+### Quick Reference
 
-| 同步需求 | 推荐方式 |
+| Synchronization requirements | Recommended methods |
 |---------|---------|
-| 跨 rank barrier | DeviceBarrier（Intra-rank + Cross-rank + 本地广播） |
-| 阶段间分隔 | `pipe_barrier(PIPE_ALL)` |
-| 计算→通信通知 | SPSC 就绪队列 + TTEST 轮询 |
-| 手动流水线 | `set_flag`/`wait_flag`（仅 TLOAD/TSTORE_IMPL 时需要） |
-| 多方通知一方 | `NotifyOp::AtomicAdd` |
-| 一方通知多方 | `NotifyOp::Set` |
+| Cross-rank barrier | DeviceBarrier (Intra-rank + Cross-rank + local broadcast) |
+| Separation between stages | `pipe_barrier(PIPE_ALL)` |
+| Compute → Communication Notification | SPSC Ready Queue + TTEST Polling |
+| Manual pipeline | `set_flag`/`wait_flag` (only required for TLOAD/TSTORE_IMPL) |
+| Multiple parties notify one party | `NotifyOp::AtomicAdd` |
+| One party notifies multiple parties | `NotifyOp::Set` |
 
 ---
 
-## 远端地址管理与多 Block 调度
+## Remote address management and multi-block scheduling
 
-远端地址获取方式、地址对齐要求、Block 分配策略、工作均分方法详见：
+For details on the remote address acquisition method, address alignment requirements, Block allocation strategy, and work equalization method, please see:
 
-**详细指南**：[多 Block 调度与地址管理](references/multi-block-scheduling.md)
+**Detailed Guide**: [Multi-Block Scheduling and Address Management](references/multi-block-scheduling.md)
 
-### 地址对齐要求
+### Address alignment requirements
 
-- 所有 GM 地址必须满足 32 字节对齐
-- Signal 地址必须 4 字节对齐
-- TPUT_ASYNC/TGET_ASYNC 的 workspace 由专用 Manager 管理
+- All GM addresses must meet 32-byte alignment
+- Signal address must be 4-byte aligned
+- The workspace of TPUT_ASYNC/TGET_ASYNC is managed by a dedicated Manager
 
-### 多核切分策略
+### Multi-core sharding strategy
 
-| 切分维度 | 适用场景 | 方法 |
+| Dimension segmentation | Applicable scenarios | Methods |
 |---------|---------|------|
-| Tile 维度 | 通信量大，Tile 数多 | 均分 Tile 到各 block |
-| Row 维度 | 需要精确负载均衡 | 展平为 row-level 分配（推荐） |
-| Rank 维度 | 不同 rank 独立传输 | 按 rank 分配给不同 block |
+| Tile dimension | Large communication volume, large number of Tiles | Evenly distribute Tiles to each block |
+| Row dimension | Requires precise load balancing | Flatten to row-level distribution (recommended) |
+| Rank dimension | Different ranks are transmitted independently | Assigned to different blocks according to rank |
 
 ---
 
-## Host 侧与构建系统
+## Host side and build system
 
-Host 侧标准初始化流程、CMakeLists 模板、SOC_VERSION 映射、kernel 启动模式详见：
+For details on the host side standard initialization process, CMakeLists template, SOC_VERSION mapping, and kernel startup mode:
 
-**详细指南**：[Host 侧与构建系统](references/host-build-system.md)
+**Detailed Guide**: [Host Side and Build System](references/host-build-system.md)
 
-### SOC_VERSION 与架构映射
+### SOC_VERSION and schema mapping
 
-| SOC_VERSION | 架构 | Cube Arch | Vec Arch |
+| SOC_VERSION | Architecture | Cube Arch | Vec Arch |
 |-------------|------|-----------|----------|
 | Ascend910B | A2A3 | dav-c220-cube | dav-c220-vec |
 | Ascend910C | A2A3 | dav-c220-cube | dav-c220-vec |
@@ -149,39 +149,39 @@ Host 侧标准初始化流程、CMakeLists 模板、SOC_VERSION 映射、kernel 
 
 ---
 
-## 开发检查清单
+## Development Checklist
 
-### 开发前
+### Before development
 
-- [ ] 确认目标平台（A2A3/A5）和对应的架构编译选项
-- [ ] 确认通信拓扑（节点内/跨节点）和链路类型
-- [ ] 确定通信模式（P2P/集合/融合）
-- [ ] 规划信号矩阵布局
+- [ ] Confirm the target platform (A2A3/A5) and corresponding architecture compilation options
+- [ ] Confirm communication topology (intra-node/across nodes) and link type
+- [ ] Determine the communication mode (P2P/aggregation/fusion)
+- [ ] Plan signal matrix layout
 
-### 实现中
+### Under implementation
 
-- [ ] TNOTIFY 目标地址为远端，TWAIT/TTEST 监听地址为本地
-- [ ] 乒乓 Tile 的 UB 偏移不重叠
-- [ ] 使用 `pipe_barrier(PIPE_ALL)` 分隔不同阶段
-- [ ] 手动 TLOAD/TSTORE_IMPL 之间有正确的 set_flag/wait_flag
-- [ ] 所有 rank 使用相同的 rootIdx 构建 ParallelGroup
-- [ ] 非 root rank 不调用集合通信指令
-- [ ] 远端地址计算正确（基于通信窗口偏移）
+- [ ] TNOTIFY target address is remote, TWAIT/TTEST listening address is local
+- [ ] UB offsets of Ping Pong Tile do not overlap
+- [ ] Use `pipe_barrier(PIPE_ALL)` to separate different stages
+- [ ] Manual TLOAD/TSTORE_IMPL with correct set_flag/wait_flag
+- [ ] All ranks use the same rootIdx to build ParallelGroup
+- [ ] Non-root rank does not call the collective communication command
+- [ ] The remote address is calculated correctly (based on the communication window offset)
 
-### 测试前
+### Before testing
 
-- [ ] 信号矩阵每次运行前清零
-- [ ] Host 侧 `aclrtSynchronizeStream` 确保 kernel 执行完成
-- [ ] 内存大小与 Tile 配置一致
-- [ ] CMakeLists 中 Vec/Cube 架构选择正确
+- [ ] The signal matrix is cleared before each run.
+- [ ] Host side `aclrtSynchronizeStream` ensures that kernel execution is completed
+- [ ] Memory size is consistent with Tile configuration
+- [ ] Vec/Cube architecture is selected correctly in CMakeLists
 
 ---
 
-## 相关 Skills
+## Related Skills
 
-| Skill | 用途 |
+| Skill | Purpose |
 |-------|------|
-| `pto-comm-isa-reference` | PTO-COMM 指令签名、参数、约束速查 |
-| `pto-comm-testing-debug` | 通信算子测试与调试指南 |
-| `pto-comm-performance-optimization` | 通信算子性能优化 |
-| `vector-fusion-operator-generate` | PTO 向量融合算子开发指南 |
+| `pto-comm-isa-reference` | PTO-COMM command signature, parameters, constraints quick check |
+| `pto-comm-testing-debug` | Communication operator testing and debugging guide |
+| `pto-comm-performance-optimization` | Communication operator performance optimization |
+| `vector-fusion-operator-generate` | PTO vector fusion operator development guide |

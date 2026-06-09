@@ -1,25 +1,25 @@
-# 通算重叠（Overlap）详解
+# Detailed explanation of Overlap
 
-## 基本原理
+## Basic principles
 
-将计算和通信部署在不同硬件资源上并行执行：
-- **计算**：Cube 核（矩阵运算）或 Vec 核（向量运算）
-- **通信**：MTE 引擎（GM→UB→GM）或 DMA 引擎（GM→GM）
+Deploy computation and communication on different hardware resources for parallel execution:
+- **Calculation**: Cube kernel (matrix operations) or Vec kernel (vector operations)
+- **Communication**: MTE engine (GM→UB→GM) or DMA engine (GM→GM)
 
 ```
-时间 →
+time →
 
-无重叠：
+No overlap:
 [── Compute ──][── Comm ──]  Total = T_comp + T_comm
 
-有重叠：
+There is overlap:
 [── Compute ──────────────]
     [── Comm ─────────]     Total ≈ max(T_comp, T_comm)
 ```
 
 ---
 
-## 实现模式：双 Stream + 队列调度
+## Implementation mode: dual Stream + queue scheduling
 
 ```
 computeStream (Cube blocks):
@@ -28,31 +28,31 @@ computeStream (Cube blocks):
   │ 0  │  │ 1  │  │ 2  │
   └──┬─┘  └──┬─┘  └──┬─┘
      │       │       │
-   enqueue enqueue enqueue    ← 计算完成即入队
+   enqueue enqueue enqueue ← Join the queue after calculation is completed
      │       │       │
      ▼       ▼       ▼
 commStream (Vec blocks):
-  poll → TPUT → poll → TPUT → ...  ← 立即开始传输
+  poll → TPUT → poll → TPUT → ... ← Start transmission immediately
 ```
 
-**关键设计要素**：
+**Key Design Elements**:
 
-1. **就绪队列**：每个计算 block 一个 SPSC 队列，无锁设计
-2. **计算完成即传输**：不等待所有 tile 计算完成
-3. **TTEST 轮询**：通信 kernel 使用硬件指令轮询队列
+1. **Ready Queue**: One SPSC queue for each calculation block, lock-free design
+2. **Transmit when calculation is completed**: Do not wait for all tile calculations to be completed
+3. **TTEST polling**: The communication kernel uses hardware instructions to poll the queue
 
 ---
 
-## 重叠效率度量
+## Overlap efficiency measure
 
 ```
-重叠效率 = 1 - (实际总时间 - max(T_comp, T_comm)) / min(T_comp, T_comm)
+Overlap efficiency = 1 - (actual total time - max(T_comp, T_comm)) / min(T_comp, T_comm)
 ```
 
-- **100%**：完美重叠，总时间 = max(T_comp, T_comm)
-- **0%**：无重叠，总时间 = T_comp + T_comm
+- **100%**: perfect overlap, total time = max(T_comp, T_comm)
+- **0%**: no overlap, total time = T_comp + T_comm
 
-### 计算方法
+### Calculation method
 
 ```cpp
 float pipe_total_us = MeasurePipelined();
@@ -64,22 +64,22 @@ printf("Overlap speedup: %.2fx\n", speedup);
 
 ---
 
-## 分块粒度选择
+## Block granularity selection
 
-| 粒度 | 优点 | 缺点 |
+| Granularity | Advantages | Disadvantages |
 |------|------|------|
-| 细粒度（小 Tile） | 更早开始通信，更好重叠 | 同步开销大，队列管理复杂 |
-| 粗粒度（大 Tile） | 同步少，传输效率高 | 计算完成前通信空闲 |
+| Fine-grained (small Tile) | Start communication earlier, better overlap | High synchronization overhead, complex queue management |
+| Coarse-grained (large Tile) | Less synchronization, high transmission efficiency | Communication is idle before calculation is completed |
 
-**推荐**：选择使通信开始时间 < 第一个 Tile 计算完成时间的最大 Tile 大小。
+**Recommended**: Choose a maximum tile size such that communication start time < first tile calculation completion time.
 
 ---
 
-## 多 Block 负载均衡
+## Multi-Block Load Balancing
 
-多 Block 并行时，如果工作分配不均，最慢的 Block 决定总时间。
+When multiple blocks are run in parallel, if the work is unevenly distributed, the slowest block determines the total time.
 
-### Row-level 均分（推荐）
+### Row-level equal distribution (recommended)
 
 ```cpp
 int total_rows = tile_count * ROWS_PER_TILE * (nranks - 1);
@@ -95,15 +95,15 @@ while (cur_row < my_end) {
 }
 ```
 
-### Block 数量选择
+### Block quantity selection
 
-| 因素 | 影响 |
+| Factors | Impact |
 |------|------|
-| AICore 数量 | Block 数 ≤ 可用 AICore 数 |
-| 数据量 | 数据太少不值得多 Block |
-| 同步开销 | Block 越多，barrier 中 intra-rank 同步越贵 |
-| 通信带宽 | 多 Block 可能竞争同一链路 |
+| Number of AICore | Number of Blocks ≤ Number of available AICore |
+| Data volume | Too little data is not worth more Blocks |
+| Synchronization overhead | The more blocks there are, the more expensive intra-rank synchronization in the barrier is |
+| Communication bandwidth | Multiple blocks may compete for the same link |
 
-**经验值**：
-- 通信 kernel：4~24 blocks
-- 计算 kernel：24 blocks（占满 Cube 核）
+**Experience Value**:
+- Communication kernel: 4~24 blocks
+- Computing kernel: 24 blocks (full Cube core)

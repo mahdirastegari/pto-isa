@@ -1,38 +1,38 @@
 ---
-name: PTO-COMM 通信算子测试与调试指南
-description: PTO-COMM 通信算子的测试方法和调试技巧。涵盖 CPU 仿真测试、NPU 硬件测试、Golden 数据生成、正确性验证、多 rank 测试框架、常见运行时错误诊断、信号死锁排查、精度问题分析、mssanitizer 内存检测等。触发：需要测试 PTO-COMM 通信算子、生成 Golden 数据、排查通信死锁/数据错误/信号异常、编写测试用例时。
+name: PTO-COMM Communication Operator Testing and Debugging Guide
+description: Testing methods and debugging techniques for PTO-COMM communication operator. Covers CPU simulation testing, NPU hardware testing, Golden data generation, correctness verification, multi-rank testing framework, common runtime error diagnosis, signal deadlock troubleshooting, accuracy problem analysis, mssanitizer memory detection, etc. Trigger: When it is necessary to test the PTO-COMM communication operator, generate Golden data, troubleshoot communication deadlocks/data errors/signal exceptions, and write test cases.
 license: CANN Open Software License Agreement Version 2.0
 ---
 
-# PTO-COMM 通信算子测试与调试指南
+# PTO-COMM Communication Operator Testing and Debugging Guide
 
-## 定位
+## Positioning
 
-本 Skill 是**流程型 + 诊断型** Skill，覆盖 PTO-COMM 通信算子的完整测试流程和常见问题调试方法。
+This Skill is a **process + diagnostic** Skill, covering the complete testing process and common problem debugging methods of the PTO-COMM communication operator.
 
 ---
 
-## 测试体系概述
+## Test system overview
 
-### 测试层次
+### Test level
 
-| 层次 | 目的 | 环境 | 速度 |
+| Level | Purpose | Environment | Speed |
 |------|------|------|------|
-| CPU 仿真 | 功能验证、快速迭代 | x86_64 / AArch64 | 秒级 |
-| 单指令 ST | 验证单条通信指令 | NPU 硬件 | 分钟级 |
-| 算子级 ST | 验证完整通信算子 | 多 NPU 硬件 | 分钟级 |
-| 性能测试 | 带宽/延迟/吞吐 | 多 NPU 硬件 | 分钟级 |
+| CPU simulation | Function verification, fast iteration | x86_64 / AArch64 | Second level |
+| Single instruction ST | Verify a single communication instruction | NPU hardware | Minute level |
+| Operator level ST | Verify complete communication operator | Multi-NPU hardware | Minute level |
+| Performance Test | Bandwidth/Latency/Throughput | Multi-NPU Hardware | Minute Level |
 
-### 测试目录结构
+### Test directory structure
 
 ```
 tests/
-├── cpu/comm/st/testcase/       # CPU 仿真测试
+├── cpu/comm/st/testcase/ # CPU simulation test
 │   ├── common.hpp
 │   ├── CMakeLists.txt
 │   ├── tgather/
 │   └── tscatter/
-├── npu/a2a3/comm/st/testcase/  # NPU A2A3 测试
+├── npu/a2a3/comm/st/testcase/ # NPU A2A3 test
 │   ├── common.hpp
 │   ├── hccl_context.h
 │   ├── comm_mpi.h
@@ -40,99 +40,99 @@ tests/
 │   ├── tput/ tget/ tnotify/ twait/ ttest/
 │   ├── tgather/ tscatter/ tbroadcast/ treduce/
 │   └── tput_async/ tget_async/
-└── npu/a5/comm/st/testcase/    # NPU A5 测试
+└── npu/a5/comm/st/testcase/ # NPU A5 test
 ```
 
 ---
 
-## 各测试维度详解
+## Detailed explanation of each test dimension
 
-| 维度 | 详细文档 |
+| Dimensions | Detailed documentation |
 |------|---------|
-| CPU 仿真与 NPU 硬件测试 | [测试环境与运行](references/test-environments.md) |
-| Golden 数据生成与正确性验证 | [正确性验证方法](references/correctness-verification.md) |
-| 常见问题诊断与调试工具 | [问题诊断手册](references/troubleshooting-guide.md) |
-| mssanitizer 内存检测与高级调试 | [高级调试工具](references/advanced-debug-tools.md) |
+| CPU simulation and NPU hardware testing | [Test environment and operation](references/test-environments.md) |
+| Golden data generation and correctness verification | [Correctness verification method](references/correctness-verification.md) |
+| Common problem diagnosis and debugging tools | [Problem Diagnosis Manual](references/troubleshooting-guide.md) |
+| mssanitizer memory detection and advanced debugging | [Advanced debugging tools](references/advanced-debug-tools.md) |
 
 ---
 
-## 快速诊断表
+## Quick diagnostic form
 
-| 症状 | 可能原因 | 首查项 |
+| Symptoms | Possible causes | First things to check |
 |------|---------|--------|
-| 程序挂起/超时 | TWAIT/TNOTIFY 不匹配、barrier 不对称 | 信号方向、block 数一致性 |
-| 全零输出 | 传输未执行、地址错误 | 远端地址计算、kernel 是否启动 |
-| 随机值输出 | 读到未初始化内存 | 信号同步先写后读顺序 |
-| 部分正确 | Tiling 边界问题 | AlignUp、Tile 边界处理 |
-| NaN/Inf | FP16 溢出 | AtomicAdd 累积次数 |
-| 接近但不精确 | FP16 精度限制 | 放宽 atol/rtol |
-| 第二次运行异常 | 信号残留 | 每次运行前清零信号矩阵 |
-| 读到陈旧数据 | 缓存一致性 | `dcci` + 编译器屏障 |
+| Program hang/timeout | TWAIT/TNOTIFY mismatch, barrier asymmetry | Signal direction, block number consistency |
+| All zero output | Transfer not executed, address error | Remote address calculation, kernel started or not |
+| Random value output | Read into uninitialized memory | Signal synchronization, write first, then read sequence |
+| Partially correct | Tiling boundary problem | AlignUp, Tile boundary processing |
+| NaN/Inf | FP16 overflow | AtomicAdd cumulative count |
+| Close but not exact | FP16 precision limits | Relax atol/rtol |
+| Abnormality in the second run | Signal residue | Clear the signal matrix before each run |
+| Read stale data | Cache consistency | `dcci` + compiler barrier |
 
 ---
 
-## 逐步排查法
+## Step-by-step troubleshooting method
 
 ```
-1. CPU 仿真验证数据逻辑 → 通过
-2. 单 rank 单 block 验证 → 通过
-3. 单 rank 多 block 验证 → 排查 intra-rank 同步
-4. 2 rank 验证 → 排查跨 rank 同步
-5. 8 rank 验证 → 排查规模化问题
+1. CPU simulation verification data logic → passed
+2. Single rank single block verification → passed
+3. Single-rank multi-block verification → Troubleshoot intra-rank synchronization
+4. 2 rank verification → troubleshoot cross-rank synchronization
+5. 8 rank verification → troubleshooting scaling issues
 ```
 
 ---
 
-## 精度标准速查
+## Accuracy Standard Quick Check
 
-| 数据类型 | 推荐 atol | 推荐 rtol | 说明 |
+| Data type | Recommend atol | Recommend rtol | Description |
 |---------|----------|----------|------|
-| float (FP32) | 1e-5 | 1e-4 | 高精度 |
-| half (FP16) | 1.0 | 0.01 | AtomicAdd 累积误差较大 |
-| int32 / int16 | 0 | 0 | 精确匹配 |
+| float (FP32) | 1e-5 | 1e-4 | High precision |
+| half (FP16) | 1.0 | 0.01 | AtomicAdd has a large cumulative error |
+| int32 / int16 | 0 | 0 | exact match |
 
 ---
 
-## 测试检查清单
+## Test Checklist
 
-### 功能测试
+### Functional testing
 
-- [ ] CPU 仿真通过（验证数据逻辑）
-- [ ] 单 rank / 单 block 通过
-- [ ] 单 rank / 多 block 通过（intra-rank 同步）
-- [ ] 2 rank 通过（基本跨 rank 通信）
-- [ ] 8 rank（或目标规模）通过
-- [ ] 信号矩阵每次运行前清零
-- [ ] FP16 精度在 atol/rtol 阈值内
+- [ ] CPU simulation passed (verify data logic)
+- [ ] single rank/single block pass
+- [ ] Single rank/multi-block pass (intra-rank synchronization)
+- [ ] 2 rank passed (basic cross-rank communication)
+- [ ] 8 rank (or target scale) passed
+- [ ] The signal matrix is cleared before each run.
+- [ ] FP16 accuracy within atol/rtol thresholds
 
-### 边界测试
+### Boundary testing
 
-- [ ] 数据维度非对齐情况（需要 padding）
-- [ ] 单个 Tile 即可容纳的小数据量
-- [ ] 超大数据量（自动分块）
-- [ ] nranks = 2（最小多 rank）
-- [ ] nranks = 8（典型规模）
+- [ ] Data dimension non-alignment (padding required)
+- [ ] Small amount of data that can be accommodated by a single Tile
+- [ ] Very large data volume (automatic chunking)
+- [ ] nranks = 2 (minimum multiple ranks)
+- [ ] nranks = 8 (typical scale)
 
-### 鲁棒性测试
+### Robustness test
 
-- [ ] 连续多次运行均通过（排除信号残留）
-- [ ] 不同数据模式（全零、全一、随机、极端值）
-- [ ] 不同 Block 配置（1/4/8/24 blocks）
+- [ ] Passed multiple consecutive runs (excluding signal residue)
+- [ ] Different data patterns (all zeros, all ones, random, extreme values)
+- [ ] Different Block configurations (1/4/8/24 blocks)
 
-### 性能测试
+### Performance testing
 
-- [ ] Warmup 后稳定性能数据
-- [ ] Compute-only baseline 对比
-- [ ] 流水线重叠效率（pipelined / (compute + comm)）
-- [ ] 带宽利用率（实际 / 理论峰值）
+- [ ] Warmup post-stabilization performance data
+- [ ] Compute-only baseline comparison
+- [ ] Pipeline overlap efficiency (pipelined / (compute + comm))
+- [ ] Bandwidth utilization (actual/theoretical peak)
 
 ---
 
-## 相关 Skills
+## Related Skills
 
-| Skill | 用途 |
+| Skill | Purpose |
 |-------|------|
-| `pto-comm-isa-reference` | 指令签名与约束速查 |
-| `pto-comm-operator-develop` | 通信算子开发流程 |
-| `pto-comm-performance-optimization` | 性能优化方法 |
-| `vector-fusion-operator-generate` | 向量融合算子开发和测试 |
+| `pto-comm-isa-reference` | Command signature and constraint quick check |
+| `pto-comm-operator-develop` | Communication operator development process |
+| `pto-comm-performance-optimization` | Performance optimization methods |
+| `vector-fusion-operator-generate` | Vector fusion operator development and testing |

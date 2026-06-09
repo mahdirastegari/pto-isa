@@ -1,37 +1,37 @@
-# 集合通信指令详解（TGATHER / TSCATTER / TBROADCAST / TREDUCE）
+# Detailed explanation of collective communication instructions (TGATHER / TSCATTER / TBROADCAST / TREDUCE)
 
-所有集合通信指令共享以下特征：
-- 仅 **root** 执行调用，非 root 不得调用（未定义行为）
-- 基于 `ParallelGroup` 指定参与者
-- 支持单缓冲和乒乓双缓冲
-- 数据超出 UB Tile 时自动二维滑动分块
+All collective communication instructions share the following characteristics:
+- Only **root** performs the call, non-root may not call (undefined behavior)
+- Specify participants based on `ParallelGroup`
+- Supports single buffering and ping-pong double buffering
+- Automatic two-dimensional sliding tiles when data exceeds UB Tile
 
 ---
 
-## TGATHER — 多 rank 收集
+## TGATHER — Multi-rank collection
 
-Root 从所有 rank 收集数据，沿 DIM_3 拼接。
+Root collects data from all ranks, spliced along DIM_3.
 
 ```cpp
-// 单缓冲
+// single buffer
 template <typename ParallelGroupType, typename GlobalDstData, typename TileData, typename... WaitEvents>
 RecordEvent TGATHER(ParallelGroupType &group, GlobalDstData &dst,
                     TileData &stagingTile, WaitEvents&... events);
 
-// 乒乓
+// ping pong
 template <typename ParallelGroupType, typename GlobalDstData, typename TileData, typename... WaitEvents>
 RecordEvent TGATHER(ParallelGroupType &group, GlobalDstData &dst,
                     TileData &pingTile, TileData &pongTile, WaitEvents&... events);
 ```
 
-### 约束
+### Constraints
 
-- `dstGlobalData` 指向本地内存，`GetShape(DIM_3)` 必须 ≥ `N × H`
-- `parallelGroup.tensors[r]` 指向 rank r 的远端源缓冲区
-- 所有源 tensor 必须形状和步幅相同
-- Tile 分块约束：静态 `ValidRow`/`ValidCol` 必须能整除对应维度
+- `dstGlobalData` points to local memory, `GetShape(DIM_3)` must be ≥ `N × H`
+- `parallelGroup.tensors[r]` points to the remote source buffer of rank r
+- All source tensors must have the same shape and stride
+- Tile blocking constraints: static `ValidRow`/`ValidCol` must be divisible by the corresponding dimension
 
-### 示例
+### Example
 
 ```cpp
 GPerRank tensors[NRANKS];
@@ -45,77 +45,77 @@ comm::TGATHER(group, dstG, stagingTile);
 
 ---
 
-## TSCATTER — 从 root 分发
+## TSCATTER — distributed from root
 
-Root 将数据沿 DIM_3 拆分后分发到各 rank。TGATHER 的逆操作。
+Root splits the data along DIM_3 and distributes it to each rank. The reverse operation of TGATHER.
 
 ```cpp
-// 单缓冲
+// single buffer
 template <typename ParallelGroupType, typename GlobalSrcData, typename TileData, typename... WaitEvents>
 RecordEvent TSCATTER(ParallelGroupType &group, GlobalSrcData &src,
                      TileData &stagingTile, WaitEvents&... events);
 
-// 乒乓
+// ping pong
 template <typename ParallelGroupType, typename GlobalSrcData, typename TileData, typename... WaitEvents>
 RecordEvent TSCATTER(ParallelGroupType &group, GlobalSrcData &src,
                      TileData &pingTile, TileData &pongTile, WaitEvents&... events);
 ```
 
-### 约束
+### Constraints
 
-- `srcGlobalData` 指向本地内存，`GetShape(DIM_3)` 必须 ≥ `N × H`
-- `parallelGroup.tensors[r]` 指向 rank r 的远端目标缓冲区
+- `srcGlobalData` points to local memory, `GetShape(DIM_3)` must be ≥ `N × H`
+- `parallelGroup.tensors[r]` points to the remote target buffer of rank r
 
 ---
 
-## TBROADCAST — 广播
+## TBROADCAST — Broadcast
 
-Root 将本地数据广播到所有 rank。
+Root broadcasts local data to all ranks.
 
 ```cpp
-// 单缓冲
+// single buffer
 template <typename ParallelGroupType, typename GlobalSrcData, typename TileData, typename... WaitEvents>
 RecordEvent TBROADCAST(ParallelGroupType &group, GlobalSrcData &src,
                        TileData &stagingTile, WaitEvents&... events);
 
-// 乒乓
+// ping pong
 template <typename ParallelGroupType, typename GlobalSrcData, typename TileData, typename... WaitEvents>
 RecordEvent TBROADCAST(ParallelGroupType &group, GlobalSrcData &src,
                        TileData &pingTile, TileData &pongTile, WaitEvents&... events);
 ```
 
-### 约束
+### Constraints
 
-- `srcGlobalData` 指向本地内存
-- `parallelGroup.tensors[k]` 指向 rank k 的远端目标缓冲区
+- `srcGlobalData` points to local memory
+- `parallelGroup.tensors[k]` points to the remote target buffer of rank k
 
 ---
 
-## TREDUCE — 多 rank 归约
+## TREDUCE — multi-rank reduction
 
-Root 从所有 rank 收集数据并执行逐元素归约。
+Root collects data from all ranks and performs element-wise reduction.
 
 ```cpp
-// 基础 reduce（累加 Tile + 接收 Tile）
+// Basic reduce (accumulate Tile + receive Tile)
 template <typename ParallelGroupType, typename GlobalDstData, typename TileData, typename... WaitEvents>
 RecordEvent TREDUCE(ParallelGroupType &group, GlobalDstData &dst,
                     TileData &accTile, TileData &recvTile, ReduceOp op, WaitEvents&... events);
 
-// 乒乓 reduce
+// ping pong reduce
 template <typename ParallelGroupType, typename GlobalDstData, typename TileData, typename... WaitEvents>
 RecordEvent TREDUCE(ParallelGroupType &group, GlobalDstData &dst,
                     TileData &accTile, TileData &pingTile, TileData &pongTile,
                     ReduceOp op, WaitEvents&... events);
 ```
 
-### 约束
+### Constraints
 
-- `dstGlobalData` 指向本地内存
-- `accTileData`、`recvTileData`（或 `accTile` + `pingTile` + `pongTile`）必须为预先分配的 UB Tile
-- `parallelGroup.tensors[r]` 指向 rank r 的远端源缓冲区
-- 分块约束同 TGATHER
+- `dstGlobalData` points to local memory
+- `accTileData`, `recvTileData` (or `accTile` + `pingTile` + `pongTile`) must be pre-allocated UB Tile
+- `parallelGroup.tensors[r]` points to the remote source buffer of rank r
+- Blocking constraints are the same as TGATHER
 
-### 示例
+### Example
 
 ```cpp
 comm::ParallelGroup<GTensor> group(tensors, NRANKS, my_rank);

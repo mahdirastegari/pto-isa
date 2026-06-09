@@ -1,286 +1,286 @@
 ---
-name: PTO-ISA算子实现指南
-description: 使用PTO-ISA实现指定算子功能的完整流程指南，涵盖ISA指令选择、数据流分析、指令功能解释和kernel代码生成
+name: PTO-ISA Operator Implementation Guide
+description: A complete process guide for using PTO-ISA to implement specified operator functions, covering ISA instruction selection, data flow analysis, instruction function explanation and kernel code generation
 license: CANN Open Software License Agreement Version 2.0
 ---
 
-# PTO-ISA算子实现指南
+# PTO-ISA Operator Implementation Guide
 
-本指南为使用PTO-ISA实现指定算子功能提供完整的流程指导。
+This guide provides complete process guidance for using PTO-ISA to implement specified operator functions.
 
-## 目录
-1. [概述](#概述)
-2. [工作流程](#工作流程)
-3. [步骤详解](#步骤详解)
-4. [ISA指令分类参考](#isa指令分类参考)
-5. [数据流分析框架](#数据流分析框架)
-6. [示例](#示例)
-7. [最佳实践](#最佳实践)
-8. [常见问题](#常见问题)
+## Directory
+1. [Overview](#overview)
+2. [Workflow](#workflow)
+3. [Steps detailed explanation](#Steps detailed explanation)
+4. [ISA instruction classification reference](#isa instruction classification reference)
+5. [Data flow analysis framework](#data flow analysis framework)
+6. [Example](#example)
+7. [Best Practice](#bestpractice)
+8. [FAQ](#FAQ)
 
-## 概述
+## Overview
 
-本skill专门用于帮助开发者从PTO-ISA指令集中选择合适的指令来实现指定的算子功能，并生成完整的kernel代码。
+This skill is specifically designed to help developers select appropriate instructions from the PTO-ISA instruction set to implement specified operator functions and generate complete kernel code.
 
-### 适用场景
+### Applicable scenarios
 
-- 用户指定具体的算子功能需求（如: "实现GELU激活函数"、"实现Batch Normalization"）
-- 需要分析PTO-ISA指令集并选择合适的指令组合
-- 需要理解数据在硬件上的流动过程
-- 需要生成可直接使用的kernel代码
+- Users specify specific operator functional requirements (such as: "Implementing GELU activation function", "Implementing Batch Normalization")
+- Need to analyze the PTO-ISA instruction set and select the appropriate instruction combination
+- Need to understand the flow of data on hardware
+- Need to generate kernel code that can be used directly
 
-### 关键特性
+### Key Features
 
-- **ISA指令选择**: 从PTOISA_zh.md文档中分析并选择合适的指令
-- **数据流分析**: 按数据处理顺序分析数据流向
-  - **Vector计算**: gm → ub → vector → ub → gm
-  - **Cube计算(矩阵乘)**: GM → L1 → L0A/L0B → L0C → GM
-- **指令功能解释**: 详细解释每个ISA指令在算子实现中的作用
-- **代码生成**: 输出完整的kernel代码实现
+- **ISA instruction selection**: Analyze and select the appropriate instruction from the PTOISA.md document
+- **Data flow analysis**: Analyze data flow according to data processing sequence
+  - **Vector calculation**: gm → ub → vector → ub → gm
+  - **Cube calculation (matrix multiplication)**: GM → L1 → L0A/L0B → L0C → GM
+- **Instruction Function Explanation**: Detailed explanation of the role of each ISA instruction in operator implementation
+- **Code generation**: Output the complete kernel code implementation
 
-### 近期 PR 复盘驱动的质量门
+### Quality gate driven by recent PR review
 
-开发或生成融合算子时，先把以下检查写入实现和测试，而不是在评审后补救：
+When developing or generating fusion operators, write the following checks into the implementation and tests first, rather than remediating them after review:
 
-- **同步与跨核 FIFO**：PR #61、#77、#85、#93、#95、#100 反复暴露 `TPUSH`/`TPOP`/`TFREE`、hook 注入、`subblock_dim`、split lane 和 fine-grained sync 的组合风险。涉及这些路径时，至少覆盖 C2V/V2C、split/no-split、`subblock_dim=1/2`、hook/no-hook，以及目标后端（CPU-SIM、A2/A3、A5）。
-- **地址、stride、layout**：PR #86 和 #95 的评审指出过 ColMajor DN stride、golden 数据布局、`entryOffset` 作用位置、split-N subblock 偏移问题。写 TLOAD/TSTORE 或 partial tile 搬运前，先明确 base offset、row offset、column offset、entry offset、split-lane offset 的公式，并用能区分 RowMajor/ColMajor/flattened rows/multi-column 的 golden case 验证。
-- **模板契约**：PR #92 要求用命名常量和 `static_assert` 保护 constexpr tile-type dispatch。新增模板或重载时，必须明确 tile 类型、layout、dtype、backend-only 资源的约束，不要把 magic number 留在调度逻辑中。
-- **测试闭环**：PR #85 暴露过 CMake 注册了不存在 testcase 目录的问题。新增 ST case 时检查：目录存在、局部 `CMakeLists.txt` 存在、父级 CMake 已注册、gtest 名称和 `gen_data.py` 输出一致、golden 数据能暴露目标 bug。
-- **性能声明**：PR #100 的 chunked `TPUSH` benchmark 说明同步次数会直接影响性能。任何“更快”的融合路径都要给出 backend、shape、命令和 before/after 数字；热循环要分别审查 contiguous、strided、split、fallback 路径。
+- **Synchronization and cross-core FIFO**: PR #61, #77, #85, #93, #95, #100 Repeated exposure to the combined risk of `TPUSH`/`TPOP`/`TFREE`, hook injection, `subblock_dim`, split lane and fine-grained sync. When it comes to these paths, at least C2V/V2C, split/no-split, `subblock_dim=1/2`, hook/no-hook, and target backends (CPU-SIM, A2/A3, A5) are covered.
+- **Address, stride, layout**: Reviewers of PR #86 and #95 pointed out issues with ColMajor DN stride, golden data layout, `entryOffset` action position, and split-N subblock offset. Before writing TLOAD/TSTORE or partial tile transfer, first clarify the formulas of base offset, row offset, column offset, entry offset, split-lane offset, and verify it with golden case that can distinguish RowMajor/ColMajor/flattened rows/multi-column.
+- **Template Contract**: PR #92 requires protecting constexpr tile-type dispatch with named constants and `static_assert`. When adding a new template or overloading it, you must clarify the constraints of the tile type, layout, dtype, and backend-only resources, and do not leave the magic number in the scheduling logic.
+- **Test closed loop**: PR #85 exposed the problem of CMake registering a testcase directory that does not exist. When adding a new ST case, check: the directory exists, the local `CMakeLists.txt` exists, the parent CMake is registered, the gtest name is consistent with the output of `gen_data.py`, and the golden data can expose the target bug.
+- **Performance Statement**: PR #100's chunked `TPUSH` benchmark shows that the number of synchronizations will directly affect performance. Any "faster" fusion paths are given backend, shape, command, and before/after numbers; hot loops are reviewed for contiguous, strided, split, and fallback paths respectively.
 
-## 工作流程
+## Workflow
 
-当用户指定算子功能后，遵循以下工作流程：
+After the user specifies the operator function, follow the following workflow:
 
 ```
-用户指定算子功能
+User specified operator function
     ↓
-步骤1: 阅读PTOISA_zh.md
+Step 1: Read PTOISA.md
     ↓
-步骤2: 分析算子需求，列举ISA指令
+Step 2: Analyze operator requirements and list ISA instructions
     ↓
-步骤3: 按数据流顺序解释指令功能
+Step 3: Explain the instruction function in data flow sequence
     ↓
-步骤4: 输出kernel代码实现
+Step 4: Output kernel code implementation
 ```
 
-## 步骤详解
+## Detailed explanation of steps
 
-### 步骤1: 阅读PTOISA_zh.md文档
+### Step 1: Read the PTOISA.md document
 
-**目标**: 全面了解PTO-ISA指令集，识别可能与算子相关的指令类别。
+**Goal**: Comprehensively understand the PTO-ISA instruction set and identify instruction categories that may be related to operators.
 
-**行动**:
-1. 阅读文档路径: `pto-isa/docs/PTOISA_zh.md`
-2. 重点关注指令索引表，识别以下类别的指令：
-   - **内存指令**: TLOAD, TSTORE, TPREFETCH (GM <-> Tile数据搬运)
-   - **逐元素计算**: TADD, TSUB, TMUL, TDIV, TMAX, TMIN (Tile-Tile操作)
-   - **标量操作**: TADDS, TSUBS, TMULS, TDIVS (Tile-标量操作)
-   - **数学函数**: TLOG, TEXP, TSQRT, TRSQRT, TPOW (数学运算)
-   - **激活函数**: TRELU, TPRELU, TLRELU (激活操作)
-   - **轴归约/扩展**: TROWSUM, TCOLSUM, TROWMAX, TCOLMAX (轴操作)
-   - **广播操作**: TROWEXPANDADD, TCOLEXPANDADD (广播加法)
-   - **类型转换**: TCVT (类型转换)
-   - **选择操作**: TSEL, TSELS (条件选择)
-   - **矩阵操作**: TMATMUL, TGEMV (矩阵计算)
+**Action**:
+1. Reading document path: `pto-isa/docs/PTOISA.md`
+2. Focus on the instruction index table and identify the following categories of instructions:
+   - **Memory instructions**: TLOAD, TSTORE, TPREFETCH (GM <-> Tile data transfer)
+   - **Element-wise calculation**: TADD, TSUB, TMUL, TDIV, TMAX, TMIN (Tile-Tile operation)
+   - **Scalar operations**: TADDS, TSUBS, TMULS, TDIVS (Tile-scalar operations)
+   - **Mathematical functions**: TLOG, TEXP, TSQRT, TRSQRT, TPOW (mathematical operations)
+   - **Activation function**: TRELU, TPRELU, TLRELU (activation operation)
+   - **Axis reduction/expansion**: TROWSUM, TCOLSUM, TROWMAX, TCOLMAX (axis operations)
+   - **Broadcast operations**: TROWEXPANDADD, TCOLEXPANDADD (broadcast addition)
+   - **Type Conversion**: TCVT (type conversion)
+   - **Selection operation**: TSEL, TSELS (conditional selection)
+   - **Matrix operations**: TMATMUL, TGEMV (matrix calculations)
 
-3. 记录每个相关指令的：
-   - 指令名称
-   - 功能描述
-   - 所属类别
-   - 适用场景
+3. Record each relevant instruction:
+   - command name
+   - Function description
+   - Category
+   - Applicable scenarios
 
-**输出**: 相关ISA指令列表
+**Output**: List of relevant ISA instructions
 
-### 步骤2: 整理并列举需要使用的ISA指令
+### Step 2: Organize and list the ISA instructions that need to be used
 
-**目标**: 根据算子功能需求，确定具体的ISA指令组合。
+**Goal**: Determine specific ISA instruction combinations based on operator functional requirements.
 
-**分析框架**:
+**Analysis Framework**:
 
-#### 2.1 算子功能分解
+#### 2.1 Operator function decomposition
 
-将算子功能分解为基本操作：
+Decompose the operator function into basic operations:
 
-| 算子类型 | 分解步骤 | 典型指令 |
+| Operator type | Decomposition steps | Typical instructions |
 |---------|---------|---------|
-| 激活函数 | 输入加载 + 计算 + 输出存储 | TLOAD + TEXP/TLOG/TRELU + TSTORE |
-| 归约操作 | 输入加载 + 归约 + 输出存储 | TLOAD + TROWSUM/TCOLSUM + TSTORE |
-| 逐元素运算 | 输入加载 + 运算 + 输出存储 | TLOAD + TADD/TSUB/TMUL/TDIV + TSTORE |
-| 广播操作 | 输入加载 + 广播 + 运算 + 存储 | TLOAD + TROWEXPANDADD + TSTORE |
-| 矩阵运算(Cube) | 输入加载 + 数据搬运 + 矩阵乘 + 输出存储 | TLOAD + TMOV + TMATMUL + TSTORE (GM→L1→L0A/L0B→L0C→GM) |
-| 类型转换 | 输入加载 + 转换 + 输出存储 | TLOAD + TCVT + TSTORE |
-| 条件运算 | 输入加载 + 比较 + 选择 + 存储 | TLOAD + TCMP + TSEL + TSTORE |
+| Activation function | Input loading + calculation + output storage | TLOAD + TEXP/TLOG/TRELU + TSTORE |
+| Reduce operation | Input load + reduce + output store | TLOAD + TROWSUM/TCOLSUM + TSTORE |
+| Element-wise operation | Input load + operation + output storage | TLOAD + TADD/TSUB/TMUL/TDIV + TSTORE |
+| Broadcast operation | Input load + broadcast + operation + storage | TLOAD + TROWEXPANDADD + TSTORE |
+| Matrix operation (Cube) | Input loading + data transfer + matrix multiplication + output storage | TLOAD + TMOV + TMATMUL + TSTORE (GM→L1→L0A/L0B→L0C→GM) |
+| Type conversion | Input load + conversion + output store | TLOAD + TCVT + TSTORE |
+| Conditional operations | Input load + compare + select + store | TLOAD + TCMP + TSEL + TSTORE |
 
-#### 2.2 ISA指令选择原则
+#### 2.2 ISA instruction selection principles
 
-**最小化原则**: 使用最少的指令完成功能，减少数据搬运。
+**Minimization principle**: Use the fewest instructions to complete the function and reduce data handling.
 
-**数据流优化**: 
-- **Vector计算**: 遵循 gm → ub → vector → ub → gm 的基本数据流
-- **Cube计算(矩阵乘)**: 遵循 GM → L1 → L0A/L0B → L0C → GM 的矩阵数据流
+**Data flow optimization**:
+- **Vector calculation**: Follow the basic data flow of gm → ub → vector → ub → gm
+- **Cube calculation (matrix multiplication)**: Follow the matrix data flow of GM → L1 → L0A/L0B → L0C → GM
 
-**同步考虑**: 指令间使用Event同步或手动标志同步。
+**Synchronization considerations**: Use Event synchronization or manual flag synchronization between instructions.
 
-**示例**:
+**Example**:
 
 ```
-算子: GELU激活函数
+Operator: GELU activation function
 GELU(x) = x * Φ(x) ≈ 0.5 * x * (1 + tanh(sqrt(2/π) * (x + 0.044715 * x^3)))
 
-指令选择:
-1. TLOAD: 从GM加载输入x到UB
-2. TMUL: 计算 x^3 (x * x * x)
-3. TMULS: 计算 0.044715 * x^3 (标量乘法)
-4. TADD: 计算 x + 0.044715 * x^3
-5. TMULS: 计算 sqrt(2/π) * (x + ...) (标量乘法)
-6. TEXP/TLOG: 计算tanh函数 (可选，或使用近似)
-7. TADD: 计算 1 + tanh(...)
-8. TMULS: 计算 0.5 * (结果) (标量乘法)
-9. TMUL: 计算 x * 最终结果
-10. TSTORE: 将结果从UB存储到GM
+Instruction selection:
+1. TLOAD: Load input x from GM to UB
+2. TMUL: Calculate x^3 (x * x * x)
+3. TMULS: Calculate 0.044715 * x^3 (scalar multiplication)
+4. TADD: Calculate x + 0.044715 * x^3
+5. TMULS: Calculate sqrt(2/π) * (x + ...) (scalar multiplication)
+6. TEXP/TLOG: Calculate tanh function (optional, or use approximation)
+7. TADD: Calculate 1 + tanh(...)
+8. TMULS: Compute 0.5 * (result) (scalar multiplication)
+9. TMUL: Calculate x * final result
+10. TSTORE: Store results from UB to GM
 ```
 
-**输出**: 按执行顺序排列的ISA指令列表
+**Output**: List of ISA instructions in order of execution
 
-### 步骤3: 按数据处理顺序详细解释指令功能
+### Step 3: Explain the instruction function in detail according to the data processing sequence
 
-**目标**: 详细说明每个指令在数据流中的作用。
+**Goal**: Detail the role of each instruction in the data flow.
 
-**数据流框架**:
+**Data Flow Framework**:
 
-#### Vector计算数据流
-
-```
-数据流向: gm → ub → vector → ub → gm
-阶段1: GM → UB (数据加载，使用TLOAD)
-阶段2: UB → Vector (计算准备)
-阶段3: Vector计算 (核心计算，使用TADD/TMUL/TEXP等)
-阶段4: Vector → UB (计算结果)
-阶段5: UB → GM (数据存储，使用TSTORE)
-```
-
-#### Cube计算数据流 (矩阵乘)
+#### Vector calculation data flow
 
 ```
-数据流向: GM → L1 → L0A/L0B → L0C → GM
-阶段1: GM → L1 (矩阵数据加载，使用TLOAD)
-阶段2: L1 → L0A/L0B (数据搬运到矩阵计算单元，使用TMOV)
-阶段3: Cube计算 (矩阵乘法，使用TMATMUL，结果到L0C)
-阶段4: L0C → GM (计算结果存储，使用TSTORE)
+Data flow direction: gm → ub → vector → ub → gm
+Phase 1: GM → UB (data loading, using TLOAD)
+Stage 2: UB → Vector (calculation preparation)
+Stage 3: Vector calculation (core calculation, using TADD/TMUL/TEXP, etc.)
+Stage 4: Vector → UB (calculation result)
+Stage 5: UB → GM (data storage, using TSTORE)
 ```
 
-**关键区别**:
-- **Vector计算**: 使用UB(Unified Buffer)作为中间缓冲区，执行逐元素操作
-- **Cube计算**: 使用L1和L0缓冲区(L0A/L0B/L0C)，执行矩阵乘法操作
-
-#### 3.1 指令功能解释模板
-
-对每个指令，按以下模板解释：
+#### Cube calculation data flow (matrix multiplication)
 
 ```
-指令: [指令名称]
-阶段: [GM/UB/Vector阶段]
-功能: [具体功能描述]
-数据流: [输入 → 输出的数据流向]
-示例: [具体使用示例]
-同步需求: [是否需要同步，如何同步]
+Data flow direction: GM → L1 → L0A/L0B → L0C → GM
+Phase 1: GM → L1 (matrix data loading, using TLOAD)
+Phase 2: L1 → L0A/L0B (data transfer to matrix calculation unit, using TMOV)
+Stage 3: Cube calculation (matrix multiplication, using TMATMUL, results to L0C)
+Stage 4: L0C → GM (calculation result storage, using TSTORE)
 ```
 
-#### 3.2 阶段详解
+**Key differences**:
+- **Vector calculation**: Use UB (Unified Buffer) as the intermediate buffer to perform element-by-element operations
+- **Cube calculation**: Use L1 and L0 buffers (L0A/L0B/L0C) to perform matrix multiplication operations
 
-**阶段1: GM → UB (数据加载)**
+#### 3.1 Instruction function explanation template
+
+For each instruction, explain it according to the following template:
 
 ```
-指令: TLOAD
-功能: 从GlobalTensor (GM) 加载数据到Tile (UB)
-数据流: GlobalMemory[srcGlobal] → UnifiedBuffer[srcTile]
-输入: GlobalTensor对象，描述GM上的数据布局
-输出: Tile对象，存储加载到UB的数据
-同步需求: 
-  - 推荐使用Event同步: Event<Op::TLOAD, Op::NextOp>
-  - 或手动同步: set_flag(PIPE_MTE2, PIPE_V, EVENT_ID0)
+Command: [command name]
+Stage: [GM/UB/Vector stage]
+Function: [Detailed function description]
+Data flow: [Input → output data flow direction]
+Example: [Specific usage example]
+Synchronization requirements: [Whether synchronization is required and how to synchronize]
+```
 
-示例:
+#### Detailed explanation of 3.2 stages
+
+**Phase 1: GM → UB (data loading)**
+
+```
+Command: TLOAD
+Function: Load data from GlobalTensor (GM) to Tile (UB)
+Data flow: GlobalMemory[srcGlobal] → UnifiedBuffer[srcTile]
+Input: GlobalTensor object, describing the data layout on GM
+Output: Tile object, which stores the data loaded into UB
+Synchronization requirements:
+  - It is recommended to use Event synchronization: Event<Op::TLOAD, Op::NextOp>
+  - Or manual synchronization: set_flag(PIPE_MTE2, PIPE_V, EVENT_ID0)
+
+Example:
 TLOAD(srcTile, srcGlobal);
-event0 = TLOAD(src1Tile, src1Global);  // 带Event返回
+event0 = TLOAD(src1Tile, src1Global); // Return with Event
 ```
 
-**阶段2/3: Vector计算 (核心计算)**
+**Phase 2/3: Vector calculation (core calculation)**
 
-根据具体算子，选择相应的计算指令：
+According to the specific operator, select the corresponding calculation instruction:
 
 ```
-逐元素加法: TADD
-功能: 两个Tile的逐元素加法
-数据流: UB[src0Tile] + UB[src1Tile] → UB[dstTile]
-输入: 两个源Tile
-输出: 一个目标Tile
-同步需求: Event<Op::TLOAD, Op::TADD>
+Element-wise addition: TADD
+Function: Element-wise addition of two Tiles
+Data flow: UB[src0Tile] + UB[src1Tile] → UB[dstTile]
+Input: Two source Tiles
+Output: a target Tile
+Synchronization requirements: Event<Op::TLOAD, Op::TADD>
 
-示例:
+Example:
 event1 = TADD(dstTile, src0Tile, src1Tile, event0);
 ```
 
 ```
-标量乘法: TMULS
-功能: Tile与标量的逐元素乘法
-数据流: UB[srcTile] * scalar → UB[dstTile]
-输入: 一个源Tile + 一个标量值
-输出: 一个目标Tile
-同步需求: Event<Op::PreviousOp, Op::TMULS>
+Scalar multiplication: TMULS
+Function: Element-wise multiplication of Tile and scalar
+Data flow: UB[srcTile] * scalar → UB[dstTile]
+Input: a source Tile + a scalar value
+Output: a target Tile
+Synchronization requirements: Event<Op::PreviousOp, Op::TMULS>
 
-示例:
+Example:
 event2 = TMULS(dstTile, srcTile, (T)scalar, event1);
 ```
 
 ```
-指数运算: TEXP
-功能: Tile的逐元素指数运算 (e^x)
-数据流: exp(UB[srcTile]) → UB[dstTile]
-输入: 一个源Tile
-输出: 一个目标Tile
-同步需求: Event<Op::PreviousOp, Op::TEXP>
+Exponential operation: TEXP
+Function: Tile’s element-wise exponential operation (e^x)
+Data flow: exp(UB[srcTile]) → UB[dstTile]
+Input: a source Tile
+Output: a target Tile
+Synchronization requirements: Event<Op::PreviousOp, Op::TEXP>
 
-示例:
+Example:
 event3 = TEXP(dstTile, srcTile, event2);
 ```
 
 ```
-最大值选择: TMAX
-功能: 两个Tile的逐元素最大值
-数据流: max(UB[src0Tile], UB[src1Tile]) → UB[dstTile]
-输入: 两个源Tile
-输出: 一个目标Tile
-同步需求: Event<Op::PreviousOp, Op::TMAX]
+Maximum value selection: TMAX
+Function: Element-wise maximum value of two Tiles
+Data flow: max(UB[src0Tile], UB[src1Tile]) → UB[dstTile]
+Input: Two source Tiles
+Output: a target Tile
+Synchronization requirements: Event<Op::PreviousOp, Op::TMAX]
 
-示例:
+Example:
 event4 = TMAX(dstTile, src0Tile, src1Tile, event3);
 ```
 
-**Cube计算阶段: 矩阵乘法 (GM → L1 → L0A/L0B → L0C → GM)**
+**Cube calculation phase: matrix multiplication (GM → L1 → L0A/L0B → L0C → GM)**
 
 ```
-矩阵乘法: TMATMUL
-功能: 矩阵乘法计算 C = A * B
-数据流: 
-  - GM → L1: GlobalMemory[矩阵A/B] → L1Buffer[MatTile] (TLOAD)
+Matrix multiplication: TMATMUL
+Function: Matrix multiplication calculation C = A * B
+Data flow:
+  - GM → L1: GlobalMemory[Matrix A/B] → L1Buffer[MatTile] (TLOAD)
   - L1 → L0A/L0B: L1Buffer[MatTile] → L0Buffer[Left/RightTile] (TMOV)
-  - L0A/L0B → L0C: 矩阵乘法计算 (TMATMUL)
-  - L0C → GM: L0Buffer[AccTile] → GlobalMemory[结果] (TSTORE)
-输入: 矩阵A和B (通过MatTile加载)
-输出: 矩阵C (通过AccTile存储)
-同步需求: 
-  - TLOAD完成后: Event<Op::TLOAD, Op::TMOV> 或 set_flag(PIPE_MTE2, PIPE_MTE1)
-  - TMOV完成后: Event<Op::TMOV, Op::TMATMUL> 或 set_flag(PIPE_MTE1, PIPE_M)
-  - TMATMUL完成后: Event<Op::TMATMUL, Op::TSTORE_VEC> 或 set_flag(PIPE_M, PIPE_FIX)
+  - L0A/L0B → L0C: Matrix multiplication calculation (TMATMUL)
+  - L0C → GM: L0Buffer[AccTile] → GlobalMemory[result] (TSTORE)
+Input: Matrices A and B (loaded via MatTile)
+Output: matrix C (stored via AccTile)
+Synchronization requirements:
+  - After TLOAD is completed: Event<Op::TLOAD, Op::TMOV> or set_flag(PIPE_MTE2, PIPE_MTE1)
+  - After TMOV is completed: Event<Op::TMOV, Op::TMATMUL> or set_flag(PIPE_MTE1, PIPE_M)
+  - After TMATMUL is completed: Event<Op::TMATMUL, Op::TSTORE_VEC> or set_flag(PIPE_M, PIPE_FIX)
 
-示例:
-// 1. 加载矩阵到L1
+Example:
+// 1. Load matrix into L1
 TLOAD(aMatTile, src0Global);
 TLOAD(bMatTile, src1Global);
 
-// 2. 搬运数据到L0A/L0B
+// 2. Move data to L0A/L0B
 #ifndef __PTO_AUTO__
     set_flag(PIPE_MTE2, PIPE_MTE1, EVENT_ID0);
     wait_flag(PIPE_MTE2, PIPE_MTE1, EVENT_ID0);
@@ -288,14 +288,14 @@ TLOAD(bMatTile, src1Global);
 TMOV(aTile, aMatTile);
 TMOV(bTile, bMatTile);
 
-// 3. 矩阵乘法计算
+// 3. Matrix multiplication calculation
 #ifndef __PTO_AUTO__
     set_flag(PIPE_MTE1, PIPE_M, EVENT_ID0);
     wait_flag(PIPE_MTE1, PIPE_M, EVENT_ID0);
 #endif
 TMATMUL(cTile, aTile, bTile);
 
-// 4. 存储结果
+// 4. Store the result
 #ifndef __PTO_AUTO__
     set_flag(PIPE_M, PIPE_FIX, EVENT_ID0);
     wait_flag(PIPE_M, PIPE_FIX, EVENT_ID0);
@@ -303,29 +303,29 @@ TMATMUL(cTile, aTile, bTile);
 TSTORE(dstGlobal, cTile);
 ```
 
-**阶段5: UB → GM (数据存储)**
+**Phase 5: UB → GM (data storage)**
 
 ```
-指令: TSTORE
-功能: 将Tile数据存储到GlobalTensor (GM)
-数据流: UnifiedBuffer[dstTile] → GlobalMemory[dstGlobal]
-输入: Tile对象，UB上的数据
-输出: GlobalTensor对象，GM上的数据
-同步需求: 
-  - 推荐使用Event同步: Event<Op::LastOp, Op::TSTORE_VEC>
-  - 或手动同步: set_flag(PIPE_V, PIPE_MTE3, EVENT_ID0)
+Command: TSTORE
+Function: Store Tile data to GlobalTensor (GM)
+Data flow: UnifiedBuffer[dstTile] → GlobalMemory[dstGlobal]
+Input: Tile object, data on UB
+Output: GlobalTensor object, data on GM
+Synchronization requirements:
+  - It is recommended to use Event synchronization: Event<Op::LastOp, Op::TSTORE_VEC>
+  - Or manual synchronization: set_flag(PIPE_V, PIPE_MTE3, EVENT_ID0)
 
-示例:
+Example:
 TSTORE(dstGlobal, dstTile, eventLast);
 ```
 
-**输出**: 按数据流顺序的完整指令功能解释文档
+**Output**: Complete instruction function explanation document in data flow sequence
 
-### 步骤4: 输出kernel代码实现
+### Step 4: Output kernel code implementation
 
-**目标**: 生成完整的、可运行的kernel代码。
+**Goal**: Generate complete, runnable kernel code.
 
-**代码结构**:
+**Code structure**:
 
 ```cpp
 /**
@@ -340,17 +340,17 @@ using namespace pto;
 
 namespace OperatorName {
 
-// ==================== Device函数 ====================
+// ==================== Device function ====================
 template <typename T, int kTRows_, int kTCols_, int vRows, int vCols>
 __global__ AICORE void runOperator(__gm__ T *out, __gm__ T *src0, ...)
 {
-    // 1. 类型定义
+    // 1. Type definition
     using DynShapeDim5 = Shape<1, 1, 1, vRows, vCols>;
     using DynStrideDim5 = Stride<1, 1, 1, vCols, 1>;
     using GlobalData = GlobalTensor<T, DynShapeDim5, DynStrideDim5>;
     using TileData = Tile<TileType::Vec, T, kTRows_, kTCols_, BLayout::RowMajor, -1, -1>;
 
-    // 2. Tile和GlobalTensor声明
+    // 2. Tile and GlobalTensor declaration
     TileData src0Tile(vRows, vCols);
     TileData dstTile(vRows, vCols);
     TASSIGN(src0Tile, 0x0);
@@ -359,23 +359,23 @@ __global__ AICORE void runOperator(__gm__ T *out, __gm__ T *src0, ...)
     GlobalData src0Global(src0);
     GlobalData dstGlobal(out);
 
-    // 3. Event声明 (推荐使用Event同步)
+    // 3. Event declaration (event synchronization is recommended)
     Event<Op::TLOAD, Op::CALC_OP> event0;
     Event<Op::CALC_OP, Op::TSTORE_VEC> event1;
 
-    // 4. 数据加载 (gm → ub)
+    // 4. Data loading (gm → ub)
     event0 = TLOAD(src0Tile, src0Global);
 
-    // 5. 核心计算 (vector计算)
+    // 5. Core calculation (vector calculation)
     event1 = CALC_OP(dstTile, src0Tile, ..., event0);
 
-    // 6. 数据存储 (ub → gm)
+    // 6. Data storage (ub → gm)
     TSTORE(dstGlobal, dstTile, event1);
 
     out = dstGlobal.data();
 }
 
-// ==================== Host函数 ====================
+// ==================== Host function ====================
 template <typename T, int kTRows_, int kTCols_, int vRows, int vCols>
 void launchOperator(T *out, T *src0, ..., void *stream)
 {
@@ -387,198 +387,198 @@ void launchOperator(T *out, T *src0, ..., void *stream)
     }
 }
 
-// ==================== 模板实例化 ====================
+// ==================== Template instantiation ====================
 template void launchOperator<float, 64, 64, 64, 64>(float *out, float *src0, ..., void *stream);
 template void launchOperator<aclFloat16, 16, 256, 16, 256>(aclFloat16 *out, aclFloat16 *src0, ..., void *stream);
 
 } // namespace OperatorName
 ```
 
-**代码生成要点**:
+**Key points for code generation**:
 
-1. **命名规范**: kernel文件命名为 `t<操作指令>_kernel.cpp`
-2. **模板参数**: T (数据类型), kTRows_, kTCols_ (Tile维度), vRows, vCols (有效数据维度)
-3. **类型转换**: aclFloat16需要转换为half类型
-4. **缓冲区分配**: 使用TASSIGN紧密排布Tile地址
-5. **同步策略**: 推荐使用Event同步，备选手动标志同步
-6. **模板实例化**: 为常用配置提供实例化
+1. **Naming convention**: The kernel file is named `t<operation command>_kernel.cpp`
+2. **Template parameters**: T (data type), kTRows_, kTCols_ (Tile dimensions), vRows, vCols (valid data dimensions)
+3. **Type conversion**: aclFloat16 needs to be converted to half type
+4. **Buffer Allocation**: Use TASSIGN to tightly arrange Tile addresses
+5. **Synchronization strategy**: It is recommended to use Event synchronization, and manual logo synchronization is an alternative.
+6. **Template Instantiation**: Provide instantiation for common configurations
 
-**输出**: 完整的kernel代码文件
+**Output**: Complete kernel code file
 
-## ISA指令分类参考
+## ISA instruction classification reference
 
-### 内存指令 (GM <-> Tile)
+### Memory instructions (GM <-> Tile)
 
-| 指令 | 功能 | 数据流 | 适用场景 |
+| Command | Function | Data flow | Applicable scenarios |
 |------|------|--------|---------|
-| TLOAD | GM → UB/L1 | GlobalMemory → UnifiedBuffer/L1Buffer | Vector和Cube计算 |
-| TSTORE | UB/L0C → GM | UnifiedBuffer/L0Buffer → GlobalMemory | Vector和Cube计算 |
-| TPREFETCH | 预取到UB缓存 | 提示性预取 | Vector计算优化 |
-| MGATHER | 索引收集加载 | GM[索引] → UB | Vector计算 |
-| MSCATTER | 索引散播存储 | UB → GM[索引] | Vector计算 |
+| TLOAD | GM → UB/L1 | GlobalMemory → UnifiedBuffer/L1Buffer | Vector and Cube calculations |
+| TSTORE | UB/L0C → GM | UnifiedBuffer/L0Buffer → GlobalMemory | Vector and Cube calculations |
+| TPREFETCH | Prefetch to UB cache | Prompt prefetch | Vector calculation optimization |
+| MGATHER | Index collection loading | GM[index] → UB | Vector calculation |
+| MSCATTER | Index spread storage | UB → GM[index] | Vector calculation |
 
-**注意**:
-- TLOAD可以加载到UB (Vector计算) 或L1Buffer (Cube计算)
-- TSTORE可以存储UB (Vector计算) 或L0C (Cube计算) 的数据
+**Note**:
+- TLOAD can be loaded into UB (Vector calculation) or L1Buffer (Cube calculation)
+- TSTORE can store UB (Vector calculation) or L0C (Cube calculation) data
 
-### 逐元素计算指令 (Tile-Tile)
+### Element-by-element calculation instructions (Tile-Tile)
 
-| 指令 | 功能 | 表达式 |
+| Command | Function | Expression |
 |------|------|--------|
-| TADD | 逐元素加法 | dst = src0 + src1 |
-| TSUB | 逐元素减法 | dst = src0 - src1 |
-| TMUL | 逐元素乘法 | dst = src0 * src1 |
-| TDIV | 逐元素除法 | dst = src0 / src1 |
-| TMAX | 逐元素最大值 | dst = max(src0, src1) |
-| TMIN | 逐元素最小值 | dst = min(src0, src1) |
-| TCMP | 比较(生成掩码) | predicate = cmp(src0, src1) |
-| TSHL | 逐元素左移 | dst = src0 << src1 |
-| TSHR | 逐元素右移 | dst = src0 >> src1 |
-| TAND | 逐元素按位与 | dst = src0 & src1 |
-| TOR | 逐元素按位或 | dst = src0 | src1 |
-| TXOR | 逐元素按位异或 | dst = src0 ^ src1 |
-| TNOT | 逐元素按位取反 | dst = ~src |
+| TADD | Element-wise addition | dst = src0 + src1 |
+| TSUB | Element-wise subtraction | dst = src0 - src1 |
+| TMUL | Element-wise multiplication | dst = src0 * src1 |
+| TDIV | Element-wise division | dst = src0 / src1 |
+| TMAX | Element-wise maximum value | dst = max(src0, src1) |
+| TMIN | Element-wise minimum value | dst = min(src0, src1) |
+| TCMP | compare (generate mask) | predicate = cmp(src0, src1) |
+| TSHL | Element-wise left shift | dst = src0 << src1 |
+| TSHR | Element-wise right shift | dst = src0 >> src1 |
+| TAND | Element-wise bitwise AND | dst = src0 & src1 |
+| TOR | Element-wise bitwise OR | dst = src0 | src1 |
+| TXOR | Element-wise bitwise XOR | dst = src0 ^ src1 |
+| TNOT | Element-wise bitwise negation | dst = ~src |
 
-### 标量操作指令 (Tile-标量)
+### Scalar operation instructions (Tile-scalar)
 
-| 指令 | 功能 | 表达式 |
+| Command | Function | Expression |
 |------|------|--------|
-| TADDS | Tile加标量 | dst = src + scalar |
-| TSUBS | Tile减标量 | dst = src - scalar |
-| TMULS | Tile乘标量 | dst = src * scalar |
-| TDIVS | Tile除标量 | dst = src / scalar |
-| TMINS | Tile与标量最小值 | dst = min(src, scalar) |
-| TMAXS | Tile与标量最大值 | dst = max(src, scalar) |
-| TCMPS | Tile与标量比较 | predicate = cmp(src, scalar) |
-| TEXPANDS | 标量广播到Tile | dst = broadcast(scalar) |
+| TADDS | Tile plus scalar | dst = src + scalar |
+| TSUBS | Tile minus scalar | dst = src - scalar |
+| TMULS | Tile multiplied by scalar | dst = src * scalar |
+| TDIVS | Tile divide scalar | dst = src/scalar |
+| TMINS | Tile and scalar minimum | dst = min(src, scalar) |
+| TMAXS | Tile and scalar maximum | dst = max(src, scalar) |
+| TCMPS | Tile vs. scalar comparison | predicate = cmp(src, scalar) |
+| TEXPANDS | Scalar broadcast to Tile | dst = broadcast(scalar) |
 
-### 数学函数指令
+### Math function instructions
 
-| 指令 | 功能 | 表达式 |
+| Command | Function | Expression |
 |------|------|--------|
-| TLOG | 自然对数 | dst = log(src) |
-| TEXP | 指数运算 | dst = exp(src) |
-| TSQRT | 平方根 | dst = sqrt(src) |
-| TRSQRT | 倒数平方根 | dst = 1/sqrt(src) |
-| TPOW | 幂运算 | dst = src0 ^ src1 |
-| TRECIP | 倒数 | dst = 1/src |
-| TABS | 绝对值 | dst = abs(src) |
-| TNEG | 取负 | dst = -src |
+| TLOG | natural logarithm | dst = log(src) |
+| TEXP | Exponential operation | dst = exp(src) |
+| TSQRT | square root | dst = sqrt(src) |
+| TRSQRT | Reciprocal square root | dst = 1/sqrt(src) |
+| TPOW | Power operation | dst = src0 ^ src1 |
+| TRECIP | reciprocal | dst = 1/src |
+| TABS | Absolute value | dst = abs(src) |
+| TNEG | Negative | dst = -src |
 
-### 激活函数指令
+### Activate function instructions
 
-| 指令 | 功能 | 表达式 |
+| Command | Function | Expression |
 |------|------|--------|
 | TRELU | ReLU | dst = max(0, src) |
 | TPRELU | PReLU | dst = max(0, src) + slope * min(0, src) |
-| TLRELU | Leaky ReLU (标量斜率) | dst = max(0, src) + scalar * min(0, src) |
+| TLRELU | Leaky ReLU (scalar slope) | dst = max(0, src) + scalar * min(0, src) |
 
-### 轴归约/扩展指令
+### Axis reduction/expansion instructions
 
-| 指令 | 功能 | 操作 |
+| Command | Function | Operation |
 |------|------|------|
-| TROWSUM | 行求和 | 每行所有列求和 |
-| TROWPROD | 行乘积 | 每行所有列乘积 |
-| TROWMAX | 行最大值 | 每行所有列最大值 |
-| TROWMIN | 行最小值 | 每行所有列最小值 |
-| TROWARGMAX | 行argmax | 每行最大值列索引 |
-| TROWARGMIN | 行argmin | 每行最小值列索引 |
-| TCOLSUM | 列求和 | 每列所有行求和 |
-| TCOLPROD | 列乘积 | 每列所有行乘积 |
-| TCOLMAX | 列最大值 | 每列所有行最大值 |
-| TCOLMIN | 列最小值 | 每列所有行最小值 |
-| TCOLARGMAX | 列argmax | 每列最大值行索引 |
-| TCOLARGMIN | 列argmin | 每列最小值行索引 |
-| TROWEXPAND | 行广播 | 将行首元素广播到整行 |
-| TCOLEXPAND | 列广播 | 将列首元素广播到整列 |
+| TROWSUM | Sum of rows | Sum of all columns in each row |
+| TROWPROD | row product | product of all columns in each row |
+| TROWMAX | Row maximum value | Maximum value of all columns in each row |
+| TROWMIN | row minimum value | minimum value of all columns in each row |
+| TROWARGMAX | row argmax | maximum value column index for each row |
+| TROWARGMIN | row argmin | minimum value column index for each row |
+| TCOLSUM | Sum of columns | Sum of all rows in each column |
+| TCOLPROD | column product | product of all rows per column |
+| TCOLMAX | Maximum value of column | Maximum value of all rows in each column |
+| TCOLMIN | Column minimum value | Minimum value of all rows in each column |
+| TCOLARGMAX | Column argmax | Maximum row index of each column |
+| TCOLARGMIN | Column argmin | Minimum value row index for each column |
+| TROWEXPAND | Row broadcast | Broadcast the first element of the row to the entire row |
+| TCOLEXPAND | Column broadcast | Broadcast the first element of the column to the entire column |
 
-### 广播运算指令
+### Broadcast operation instructions
 
-| 指令 | 功能 | 操作 |
+| Command | Function | Operation |
 |------|------|------|
-| TROWEXPANDADD | 行广播加法 | 每行 + 广播标量向量 |
-| TROWEXPANDSUB | 行广播减法 | 每行 - 广播标量向量 |
-| TROWEXPANDMUL | 行广播乘法 | 每行 * 广播标量向量 |
-| TROWEXPANDDIV | 行广播除法 | 每行 / 广播标量向量 |
-| TROWEXPANDMAX | 行广播最大值 | max(每行, 广播标量向量) |
-| TROWEXPANDMIN | 行广播最小值 | min(每行, 广播标量向量) |
-| TROWEXPANDEXPDIF | 行指数差 | exp(每行 - 广播标量向量) |
-| TCOLEXPANDADD | 列广播加法 | 每列 + 广播标量向量 |
-| TCOLEXPANDSUB | 列广播减法 | 每列 - 广播标量向量 |
-| TCOLEXPANDMUL | 列广播乘法 | 每列 * 广播标量向量 |
-| TCOLEXPANDDIV | 列广播除法 | 每列 / 广播标量向量 |
-| TCOLEXPANDMAX | 列广播最大值 | max(每列, 广播标量向量) |
-| TCOLEXPANDMIN | 列广播最小值 | min(每列, 广播标量向量) |
-| TCOLEXPANDEXPDIF | 列指数差 | exp(每列 - 广播标量向量) |
+| TROWEXPANDADD | row broadcast addition | + broadcast scalar vector per row |
+| TROWEXPANDSUB | row broadcast subtraction | each row - broadcast scalar vector |
+| TROWEXPANDMUL | row broadcast multiplication | * broadcast scalar vector per row |
+| TROWEXPANDDIV | row broadcast division | per row / broadcast scalar vector |
+| TROWEXPANDMAX | Row broadcast maximum value | max(each row, broadcast scalar vector) |
+| TROWEXPANDMIN | row broadcast minimum value | min(each row, broadcast scalar vector) |
+| TROWEXPANDEXPDIF | Row exponent difference | exp(each row - broadcast scalar vector) |
+| TCOLEXPANDADD | column broadcast addition | + broadcast scalar vector per column |
+| TCOLEXPANDSUB | column broadcast subtraction | per column - broadcast scalar vector |
+| TCOLEXPANDMUL | Column broadcast multiplication | * Broadcast scalar vector per column |
+| TCOLEXPANDDIV | column broadcast division | per column / broadcast scalar vector |
+| TCOLEXPANDMAX | Column broadcast maximum value | max(each column, broadcast scalar vector) |
+| TCOLEXPANDMIN | Column broadcast minimum value | min(each column, broadcast scalar vector) |
+| TCOLEXPANDEXPDIF | Column exponential difference | exp(each column - broadcast scalar vector) |
 
-### 数据搬运指令 (缓冲区数据移动)
+### Data movement instructions (buffer data movement)
 
-| 指令 | 功能 | 数据流 | 适用场景 |
+| Command | Function | Data flow | Applicable scenarios |
 |------|------|--------|---------|
-| TMOV | L1 → L0A/L0B | MatTile → LeftTile/RightTile | Cube计算 (矩阵乘法) |
-| TMOV | Tile之间移动 | srcTile → dstTile | 数据格式转换 |
-| TMOV_FP | 带缩放的移动 | srcTile * scale → dstTile | 量化操作 |
-| TRESHAPE | Tile重解释 | 保持字节，改变类型/形状 | 类型转换 |
-| TTRANS | Tile转置 | srcTile^T → dstTile | 矩阵转置 |
+| TMOV | L1 → L0A/L0B | MatTile → LeftTile/RightTile | Cube calculation (matrix multiplication) |
+| TMOV | Move between Tiles | srcTile → dstTile | Data format conversion |
+| TMOV_FP | Movement with scale | srcTile * scale → dstTile | Quantization operation |
+| TRESHAPE | Tile reinterpretation | Keep bytes, change type/shape | Type conversion |
+| TTRANS | Tile transpose | srcTile^T → dstTile | Matrix transpose |
 
-**TMOV在矩阵乘法中的关键作用**:
-- 将L1Buffer的MatTile数据搬运到L0Buffer
-- 准备LeftTile和RightTile供Cube计算单元使用
-- 数据流: L1 → L0A/L0B → TMATMUL → L0C
+**The key role of TMOV in matrix multiplication**:
+- Move the MatTile data of L1Buffer to L0Buffer
+- Prepare LeftTile and RightTile for use by Cube computing unit
+- Data flow: L1 → L0A/L0B → TMATMUL → L0C
 
-### 类型转换与选择指令
+### Type conversion and selection instructions
 
-| 指令 | 功能 | 操作 |
+| Command | Function | Operation |
 |------|------|------|
-| TCVT | 类型转换 | src_type → dst_type |
-| TSEL | 条件选择(Tile) | mask ? src0 : src1 |
-| TSELS | 条件选择(Tile-标量) | mask ? src : scalar |
+| TCVT | Type conversion | src_type → dst_type |
+| TSEL | Condition selection (Tile) | mask ? src0 : src1 |
+| TSELS | conditional selection (Tile-scalar) | mask ? src : scalar |
 
-### 矩阵运算指令 (使用Cube核心)
+### Matrix operation instructions (using Cube core)
 
-**重要**: 矩阵运算使用Cube核心，数据流为 **GM → L1 → L0A/L0B → L0C → GM**
+**Important**: Matrix operations use the Cube core, and the data flow is **GM → L1 → L0A/L0B → L0C → GM**
 
-| 指令 | 功能 | 数据流 | 表达式 |
+| Command | Function | Data Flow | Expression |
 |------|------|--------|--------|
-| TLOAD | GM → L1 | GlobalMemory → L1Buffer (加载矩阵数据) | MatTile加载 |
-| TMOV | L1 → L0A/L0B | L1Buffer → L0Buffer (搬运到计算单元) | MatTile → LeftTile/RightTile |
-| TMATMUL | L0A/L0B → L0C | Cube矩阵乘法计算 | C = A * B |
-| TSTORE | L0C → GM | L0Buffer → GlobalMemory (存储结果) | AccTile → GlobalMemory |
-| TMATMUL_ACC | 矩阵乘法(累加) | L0A/L0B → L0C (带累加) | C = A * B + C |
-| TMATMUL_BIAS | 矩阵乘法(加偏置) | L0A/L0B → L0C + bias | C = A * B + bias |
-| TGEMV | 矩阵向量乘 | L0A/L0B → L0C | y = A * x |
-| TGEMV_ACC | 矩阵向量乘(累加) | L0A/L0B → L0C (带累加) | y = A * x + y |
-| TGEMV_BIAS | 矩阵向量乘(加偏置) | L0A/L0B → L0C + bias | y = A * x + bias |
+| TLOAD | GM → L1 | GlobalMemory → L1Buffer (load matrix data) | MatTile loading |
+| TMOV | L1 → L0A/L0B | L1Buffer → L0Buffer (moved to computing unit) | MatTile → LeftTile/RightTile |
+| TMATMUL | L0A/L0B → L0C | Cube matrix multiplication calculation | C = A * B |
+| TSTORE | L0C → GM | L0Buffer → GlobalMemory (storage result) | AccTile → GlobalMemory |
+| TMATMUL_ACC | Matrix multiplication (accumulation) | L0A/L0B → L0C (with accumulation) | C = A * B + C |
+| TMATMUL_BIAS | Matrix multiplication (plus bias) | L0A/L0B → L0C + bias | C = A * B + bias |
+| TGEMV | Matrix-vector multiplication | L0A/L0B → L0C | y = A * x |
+| TGEMV_ACC | Matrix-vector multiplication (accumulation) | L0A/L0B → L0C (with accumulation) | y = A * x + y |
+| TGEMV_BIAS | Matrix-vector multiplication (plus bias) | L0A/L0B → L0C + bias | y = A * x + bias |
 
-**矩阵乘法完整数据流示例**:
+**Matrix multiplication complete data flow example**:
 ```
 GM → L1 (TLOAD) → L0A/L0B (TMOV) → L0C (TMATMUL) → GM (TSTORE)
 
-详细步骤:
-1. TLOAD: 加载矩阵A和B从GM到L1Buffer (MatTile)
-2. TMOV: 将MatTile数据搬运到L0Buffer (LeftTile和RightTile)
-3. TMATMUL: 在Cube核心执行矩阵乘法，结果存储到L0C (AccTile)
-4. TSTORE: 将AccTile结果存储到GM
+Detailed steps:
+1. TLOAD: Load matrices A and B from GM to L1Buffer (MatTile)
+2. TMOV: Move MatTile data to L0Buffer (LeftTile and RightTile)
+3. TMATMUL: Perform matrix multiplication in the Cube core and store the result in L0C (AccTile)
+4. TSTORE: Store AccTile results to GM
 ```
 
-### 三元运算指令
+### Ternary operation instructions
 
-| 指令 | 功能 | 表达式 |
+| Command | Function | Expression |
 |------|------|--------|
-| TADDC | 三元加法 | dst = src0 + src1 + src2 |
-| TSUBC | 三元减法 | dst = src0 - src1 + src2 |
-| TADDSC | Tile+标量+Tile加法 | dst = src0 + scalar + src1 |
-| TSUBSC | Tile-标量+Tile运算 | dst = src0 - scalar + src1 |
+| TADDC | Ternary addition | dst = src0 + src1 + src2 |
+| TSUBC | Ternary subtraction | dst = src0 - src1 + src2 |
+| TADDSC | Tile+scalar+Tile addition | dst = src0 + scalar + src1 |
+| TSUBSC | Tile-scalar + Tile operation | dst = src0 - scalar + src1 |
 
-## 数据流分析框架
+## Data flow analysis framework
 
-### 基本数据流模式
+### Basic data flow mode
 
-#### Vector计算数据流 (逐元素操作)
+#### Vector calculation data flow (element-by-element operation)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│              Vector计算数据流 (gm → ub → vector → ub → gm)    │
+│ Vector calculation data flow (gm → ub → vector → ub → gm) │
 ├─────────────────────────────────────────────────────────────┤
 │                                                              │
 │  GlobalMemory (GM)                                           │
@@ -587,11 +587,11 @@ GM → L1 (TLOAD) → L0A/L0B (TMOV) → L0C (TMATMUL) → GM (TSTORE)
 │       ↓                                                      │
 │  UnifiedBuffer (UB)                                          │
 │       │                                                      │
-│       │ 计算指令 (TADD/TMUL/TEXP等)                           │
+│ │ Calculation instructions (TADD/TMUL/TEXP, etc.) │
 │       ↓                                                      │
-│  Vector计算单元                                               │
+│ Vector calculation unit │
 │       │                                                      │
-│       │ 计算结果                                              │
+│ │ Calculation results │
 │       ↓                                                      │
 │  UnifiedBuffer (UB)                                          │
 │       │                                                      │
@@ -602,11 +602,11 @@ GM → L1 (TLOAD) → L0A/L0B (TMOV) → L0C (TMATMUL) → GM (TSTORE)
 └─────────────────────────────────────────────────────────────┘
 ```
 
-#### Cube计算数据流 (矩阵乘法)
+#### Cube calculation data flow (matrix multiplication)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│               Cube计算数据流 (GM → L1 → L0 → GM)               │
+│ Cube calculation data flow (GM → L1 → L0 → GM) │
 ├─────────────────────────────────────────────────────────────┤
 │                                                              │
 │  GlobalMemory (GM)                                           │
@@ -630,70 +630,70 @@ GM → L1 (TLOAD) → L0A/L0B (TMOV) → L0C (TMATMUL) → GM (TSTORE)
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**两种数据流的区别**:
+**The difference between the two data streams**:
 
-| 特性 | Vector计算 | Cube计算 |
+| Features | Vector calculation | Cube calculation |
 |------|-----------|----------|
-| 计算单元 | Vector Unit (PIPE_V) | Matrix Unit (PIPE_M) |
-| 中间缓冲 | UnifiedBuffer (UB) | L1Buffer + L0Buffer (L0A/L0B/L0C) |
-| 适用场景 | 逐元素操作 (TADD/TMUL/TEXP等) | 矩阵乘法 (TMATMUL) |
-| 数据流路径 | GM → UB → V → UB → GM | GM → L1 → L0A/L0B → L0C → GM |
-| 同步流水线 | MTE2 → V → MTE3 | MTE2 → MTE1 → M → FIX → MTE3 |
+| Calculation Unit | Vector Unit (PIPE_V) | Matrix Unit (PIPE_M) |
+| Intermediate buffer | UnifiedBuffer (UB) | L1Buffer + L0Buffer (L0A/L0B/L0C) |
+| Applicable scenarios | Element-by-element operations (TADD/TMUL/TEXP, etc.) | Matrix multiplication (TMATMUL) |
+| Data flow path | GM → UB → V → UB → GM | GM → L1 → L0A/L0B → L0C → GM |
+| Synchronous pipeline | MTE2 → V → MTE3 | MTE2 → MTE1 → M → FIX → MTE3 |
 
-### 同步机制
+### Synchronization mechanism
 
-**Event同步（推荐）**:
+**Event synchronization (recommended)**:
 ```cpp
 Event<Op::TLOAD, Op::TADD> event0;
 Event<Op::TADD, Op::TSTORE_VEC> event1;
 
-event0 = TLOAD(srcTile, srcGlobal);         // TLOAD完成时event0触发
-event1 = TADD(dstTile, src0Tile, src1Tile, event0);  // 等待event0，完成后触发event1
-TSTORE(dstGlobal, dstTile, event1);         // 等待event1
+event0 = TLOAD(srcTile, srcGlobal); // event0 triggers when TLOAD is completed
+event1 = TADD(dstTile, src0Tile, src1Tile, event0); // Wait for event0 and trigger event1 after completion
+TSTORE(dstGlobal, dstTile, event1); // Wait for event1
 ```
 
-**手动标志同步**:
+**Manual Logo Synchronization**:
 ```cpp
 TLOAD(src0Tile, src0Global);
 TLOAD(src1Tile, src1Global);
 
 #ifndef __PTO_AUTO__
-    set_flag(PIPE_MTE2, PIPE_V, EVENT_ID0);   // MTE2(内存加载) → V(向量计算)
-    wait_flag(PIPE_MTE2, PIPE_V, EVENT_ID0);  // 等待内存加载完成
+    set_flag(PIPE_MTE2, PIPE_V, EVENT_ID0); // MTE2 (memory loading) → V (vector calculation)
+    wait_flag(PIPE_MTE2, PIPE_V, EVENT_ID0); // Wait for memory loading to complete
 #endif
 
 TADD(dstTile, src0Tile, src1Tile);
 
 #ifndef __PTO_AUTO__
-    set_flag(PIPE_V, PIPE_MTE3, EVENT_ID0);   // V(向量计算) → MTE3(内存存储)
-    wait_flag(PIPE_V, PIPE_MTE3, EVENT_ID0);  // 等待计算完成
+    set_flag(PIPE_V, PIPE_MTE3, EVENT_ID0); // V (vector calculation) → MTE3 (memory storage)
+    wait_flag(PIPE_V, PIPE_MTE3, EVENT_ID0); // Wait for calculation to complete
 #endif
 
 TSTORE(dstGlobal, dstTile);
 ```
 
-### 流水线阶段
+### Pipeline stage
 
-| 流水线 | 缩写 | 功能 | 适用场景 |
+| Assembly line | Abbreviation | Function | Applicable scenarios |
 |--------|------|------|---------|
-| Memory Transfer Engine 1 | PIPE_MTE1 | 矩阵数据搬运 (L1 → L0) | Cube计算 (矩阵乘法) |
-| Memory Transfer Engine 2 | PIPE_MTE2 | 向量/矩阵数据加载 (GM → UB/L1) | Vector和Cube计算 |
-| Memory Transfer Engine 3 | PIPE_MTE3 | 数据存储 (UB/L0C → GM) | Vector和Cube计算 |
-| Vector Unit | PIPE_V | 向量计算 (逐元素操作) | Vector计算 (TADD/TMUL等) |
-| Matrix Unit | PIPE_M | 矩阵计算 (矩阵乘法) | Cube计算 (TMATMUL) |
-| Fix Unit | PIPE_FIX | 格式转换 | Cube计算结果格式化 |
-| Scalar Unit | PIPE_S | 标量计算 | 标量操作 |
-| All Pipelines | PIPE_ALL | 所有流水线 | 全局同步 |
+| Memory Transfer Engine 1 | PIPE_MTE1 | Matrix data transfer (L1 → L0) | Cube calculation (matrix multiplication) |
+| Memory Transfer Engine 2 | PIPE_MTE2 | Vector/Matrix data loading (GM → UB/L1) | Vector and Cube calculations |
+| Memory Transfer Engine 3 | PIPE_MTE3 | Data Storage (UB/L0C → GM) | Vector and Cube Computation |
+| Vector Unit | PIPE_V | Vector calculation (element-by-element operation) | Vector calculation (TADD/TMUL, etc.) |
+| Matrix Unit | PIPE_M | Matrix calculation (matrix multiplication) | Cube calculation (TMATMUL) |
+| Fix Unit | PIPE_FIX | Format conversion | Cube calculation result formatting |
+| Scalar Unit | PIPE_S | Scalar calculations | Scalar operations |
+| All Pipelines | PIPE_ALL | All Pipelines | Global Synchronization |
 
-**流水线同步策略**:
-- **Vector计算**: MTE2 (GM → UB) → V (计算) → MTE3 (UB → GM)
-- **Cube计算**: MTE2 (GM → L1) → MTE1 (L1 → L0) → M (计算) → FIX (格式转换) → MTE3 (L0 → GM)
+**Pipeline synchronization strategy**:
+- **Vector calculation**: MTE2 (GM → UB) → V (calculation) → MTE3 (UB → GM)
+- **Cube calculation**: MTE2 (GM → L1) → MTE1 (L1 → L0) → M (calculation) → FIX (format conversion) → MTE3 (L0 → GM)
 
-### 核间同步机制 (TPUSH/TPOP)
+### Inter-core synchronization mechanism (TPUSH/TPOP)
 
-**重要**: Cube核与Vector核之间的数据传输必须使用TPUSH/TPOP，不能使用简单的TMOV。
+**Important**: Data transmission between Cube core and Vector core must use TPUSH/TPOP, simple TMOV cannot be used.
 
-#### 核间同步架构
+#### Inter-core synchronization architecture
 
 ```
 ┌─────────────────────────────────────────────┐
@@ -720,29 +720,29 @@ TSTORE(dstGlobal, dstTile);
 │  │                  │                       │
 │  └──────────────────┘                       │
 │                                              │
-│  核间同步：TPUSH → TPOP → TFREE              │
+│ Inter-core synchronization: TPUSH → TPOP → TFREE │
 │                                              │
 └─────────────────────────────────────────────┘
 ```
 
-#### 核间同步方向类型
+#### Inter-core synchronization direction type
 
-| 方向类型 | 定义 | 数据流 | 生产者流水线 | 消费者流水线 |
+| Direction Type | Definition | Data Flow | Producer Pipeline | Consumer Pipeline |
 |---------|------|--------|-------------|-------------|
 | **DIR_C2V** | Cube → Vector | L0C → UB | PIPE_FIX | PIPE_V |
 | **DIR_V2C** | Vector → Cube | UB → L1 | PIPE_MTE3 | PIPE_MTE1 |
-| **DIR_BOTH** | 双向 | L0C ↔ UB | PIPE_FIX + PIPE_MTE3 | PIPE_V + PIPE_MTE1 |
+| **DIR_BOTH** | Bidirectional | L0C ↔ UB | PIPE_FIX + PIPE_MTE3 | PIPE_V + PIPE_MTE1 |
 
-#### Vector/Cube核代码区分宏定义
+#### Vector/Cube core code distinguishes macro definitions
 
-**重要**: PTO-ISA使用编译器宏来区分Vector核和Cube核的执行路径。同一份kernel代码会被编译两次，分别生成Vector核和Cube核的可执行文件。
+**Important**: PTO-ISA uses compiler macros to distinguish the execution paths of Vector cores and Cube cores. The same kernel code will be compiled twice to generate executable files for the Vector core and Cube core respectively.
 
-**宏定义模式**:
+**Macro definition mode**:
 
 ```cpp
-// 编译器在编译不同核时自动定义以下宏：
-// - 编译Vector核时：定义 __DAV_VEC__
-// - 编译Cube核时：定义 __DAV_CUBE__
+// The compiler automatically defines the following macros when compiling different cores:
+// - When compiling Vector core: define __DAV_VEC__
+// - When compiling Cube core: define __DAV_CUBE__
 
 #ifdef __DAV_CUBE__
 constexpr bool DAV_CUBE = true;
@@ -757,35 +757,35 @@ constexpr bool DAV_VEC = false;
 #endif
 ```
 
-**使用示例**:
+**Usage Example**:
 
 ```cpp
 template <typename T, int M, int K, int N>
 __global__ AICORE void runOperator(__gm__ T *out, __gm__ T *srcA, __gm__ T *srcB)
 {
-    // Vector核执行路径
+    // Vector core execution path
     if constexpr (DAV_VEC) {
-        // Vector计算：逐元素操作、激活函数、归约等
+        // Vector calculation: element-by-element operation, activation function, reduction, etc.
         TLOAD(vecTile, srcGlobal);
         TADD(dstTile, src0Tile, src1Tile);
         
-        // V2C: TPUSH数据到Cube核
+        // V2C: TPUSH data to Cube core
         TPUSH<V2CPipe, VecTileNZ, TileSplitAxis::TILE_NO_SPLIT>(pipe, vecTile);
         
-        // C2V: TPOP从Cube核接收数据
+        // C2V: TPOP receives data from Cube core
         TPOP<C2VPipe, VecTile, TileSplitAxis::TILE_NO_SPLIT>(pipe, recvTile);
         TFREE<C2VPipe, TileSplitAxis::TILE_NO_SPLIT>(pipe);
         
         TSTORE(dstGlobal, dstTile);
     }
     
-    // Cube核执行路径
+    //Cube core execution path
     if constexpr (DAV_CUBE) {
-        // Cube计算：矩阵乘法
+        // Cube calculation: matrix multiplication
         TLOAD(matTileA, srcAGlobal);
         TLOAD(matTileB, srcBGlobal);
         
-        // V2C: TPOP从Vector核接收数据
+        // V2C: TPOP receives data from the Vector core
         TPOP<V2CPipe, MatTile, TileSplitAxis::TILE_NO_SPLIT>(pipe, matTileB);
         TFREE<V2CPipe, TileSplitAxis::TILE_NO_SPLIT>(pipe);
         
@@ -793,7 +793,7 @@ __global__ AICORE void runOperator(__gm__ T *out, __gm__ T *srcA, __gm__ T *srcB
         TMOV(rightTile, matTileB);
         TMATMUL(accTile, leftTile, rightTile);
         
-        // C2V: TPUSH数据到Vector核
+        // C2V: TPUSH data to Vector core
         TPUSH<C2VPipe, AccTile, TileSplitAxis::TILE_NO_SPLIT>(pipe, accTile);
         
         TSTORE(dstGlobal, accTile);
@@ -801,152 +801,152 @@ __global__ AICORE void runOperator(__gm__ T *out, __gm__ T *srcA, __gm__ T *srcB
 }
 ```
 
-**宏定义规则**:
+**Macro definition rules**:
 
-| 宏名称 | 定义时机 | 适用场景 |
+| Macro name | Definition timing | Applicable scenarios |
 |--------|---------|---------|
-| `__DAV_VEC__` | 编译Vector核时 | Vector计算、UB操作、PIPE_V流水线 |
-| `__DAV_CUBE__` | 编译Cube核时 | Cube计算、L1/L0操作、PIPE_M流水线 |
+| `__DAV_VEC__` | When compiling Vector core | Vector calculation, UB operation, PIPE_V pipeline |
+| `__DAV_CUBE__` | When compiling Cube core | Cube calculation, L1/L0 operation, PIPE_M pipeline |
 
-**注意事项**:
-1. 使用 `if constexpr (DAV_VEC)` 和 `if constexpr (DAV_CUBE)` 进行分支判断
-2. 不要在同一个核的执行路径中混用另一核的Tile类型
-3. TPUSH/TPOP必须成对使用：Vector核TPUSH对应Cube核TPOP
-4. 每个TPOP后必须调用TFREE释放缓冲区
+**Note**:
+1. Use `if constexpr (DAV_VEC)` and `if constexpr (DAV_CUBE)` for branch judgment
+2. Do not mix Tile types of another core in the execution path of the same core
+3. TPUSH/TPOP must be used in pairs: Vector core TPUSH corresponds to Cube core TPOP
+4. TFREE must be called to release the buffer after each TPOP
 
-#### TPUSH三步流程
+#### TPUSH three-step process
 
-TPUSH用于生产者核推送数据到消费者核：
+TPUSH is used by the producer core to push data to the consumer core:
 
-**步骤1: Alloc (分配空间)**
-- 生产者核等待消费者核释放空间
+**Step 1: Alloc (Allocate Space)**
+- The producer core waits for the consumer core to release space
 - C2V: `wait_intra_block(PIPE_FIX, FlagID+1)`
 - V2C: `wait_intra_block(PIPE_MTE3, FlagID+1)`
 
-**步骤2: Store (写入数据)**
-- 根据TileType和FIFO类型选择搬运方式
+**Step 2: Store (write data)**
+- Select the handling method based on TileType and FIFO type
 - AccTile → VecFIFO: `pushAcc2VecFiFo` (L0C → UB)
 - VecTile → MatFIFO: `pushVec2MatFiFo` (UB → L1)
 
-**步骤3: Commit (信号通知)**
-- 通知消费者核数据已就绪
+**Step 3: Commit (Signal Notification)**
+- Notify consumers that core data is ready
 - C2V: `set_intra_block(PIPE_FIX, FlagID)`
 - V2C: `set_intra_block(PIPE_MTE3, FlagID)`
 
-#### TPOP三步流程
+#### TPOP three-step process
 
-TPOP用于消费者核从生产者核读取数据：
+TPOP is used by the consumer core to read data from the producer core:
 
-**步骤1: Wait (等待数据)**
-- 消费者核等待生产者核数据就绪
+**Step 1: Wait (wait for data)**
+- The consumer core waits for the producer core data to be ready
 - C2V: `wait_intra_block(PIPE_V, FlagID)`
 - V2C: `wait_intra_block(PIPE_MTE1, FlagID)`
 
-**步骤2: Pop (读取数据)**
-- 根据TileType和FIFO类型选择读取方式
+**Step 2: Pop (read data)**
+- Select the reading method based on TileType and FIFO type
 - VecFIFO → VecTile: `popTileFromVecFiFo`
 - MatFIFO → MatTile: `popTileFromMatFiFo`
 
-**步骤3: Free (释放空间)**
-- 通知生产者核空间已释放
-- 使用TFREE指令
+**Step 3: Free**
+- Notify the producer that core space has been released
+- Use the TFREE instruction
 
-#### TPipe结构定义
+#### TPipe structure definition
 
 ```cpp
 template <uint8_t FlagID, uint8_t DirType, uint32_t SlotSize, uint32_t SlotNum>
 using TPipe = TPipe<FlagID, DirType, SlotSize, SlotNum>;
 
-// 参数说明:
-// FlagID: 核间同步标志ID (0-7)
-// DirType: 通信方向 (DIR_C2V=1, DIR_V2C=2, DIR_BOTH=3)
-// SlotSize: FIFO槽大小（字节）
-// SlotNum: FIFO槽数量（建议2）
+// Parameter description:
+// FlagID: Inter-core synchronization flag ID (0-7)
+// DirType: Communication direction (DIR_C2V=1, DIR_V2C=2, DIR_BOTH=3)
+// SlotSize: FIFO slot size (bytes)
+// SlotNum: Number of FIFO slots (2 is recommended)
 
-// TPipe初始化:
-// GM_SLOT_BUFFER: GM FIFO基地址
-// C2V_CONSUMER_BUF: Cube→Vec消费者UB地址
-// V2C_CONSUMER_BUF: Vec→Cube消费者L1地址
+//TPipe initialization:
+// GM_SLOT_BUFFER: GM FIFO base address
+// C2V_CONSUMER_BUF: Cube→Vec consumer UB address
+// V2C_CONSUMER_BUF: Vec→Cube consumer L1 address
 using MatPipe = TPipe<FLAG_ID, Direction::DIR_C2V, sizeof(T) * M * N, 2>;
 MatPipe mPipe((__gm__ void *)(uint64_t)0x0, (uint32_t)0x0, (uint32_t)0x20000);
 ```
 
-#### TileSplitAxis分块模式
+#### TileSplitAxis tile mode
 
-| SplitAxis | 说明 | Vector核分配 |
+| SplitAxis | Description | Vector core allocation |
 |-----------|------|------------|
-| **TILE_UP_DOWN** | 沿行分块 | Vec0处理上半部分，Vec1处理下半部分 |
-| **TILE_LEFT_RIGHT** | 沿列分块 | Vec0处理左半部分，Vec1处理右半部分 |
-| **TILE_NO_SPLIT** | 不分块 | 单Vector核处理全部 |
+| **TILE_UP_DOWN** | Blocking along the row | Vec0 processes the upper half, Vec1 processes the lower half |
+| **TILE_LEFT_RIGHT** | Blocking along columns | Vec0 processes the left half, Vec1 processes the right half |
+| **TILE_NO_SPLIT** | No blocking | Single Vector core processes all |
 
-#### FlagID分配策略
+#### FlagID allocation strategy
 
-A5架构提供**8个FlagID**（0-7），用于核间同步：
+The A5 architecture provides **8 FlagID** (0-7) for inter-core synchronization:
 
-| FlagID | 用途 | 说明 |
+| FlagID | Purpose | Description |
 |--------|------|------|
-| **FlagID** | 数据就绪信号 | 生产者设置，消费者等待 |
-| **FlagID+1** | 空间释放信号 | 消费者设置，生产者等待 |
-| **FlagID+16** | Vec核1信号 | 双Vector核时使用 |
+| **FlagID** | Data ready signal | Producer setting, consumer waiting |
+| **FlagID+1** | Space release signal | Consumer settings, producers wait |
+| **FlagID+16** | Vec core 1 signal | Used when dual Vector cores |
 
-**双Vector核时的FlagID分配**:
+**FlagID allocation when using dual Vector cores**:
 ```
-Vec0: FlagID (主核)
-Vec1: FlagID+16 (从核)
+Vec0: FlagID (main core)
+Vec1: FlagID+16 (slave core)
 
-Cube核需要等待双核：
-wait_intra_block(PIPE_FIX, FlagID);      // Vec0信号
-wait_intra_block(PIPE_FIX, FlagID+16);    // Vec1信号
+Cube core needs to wait for dual core:
+wait_intra_block(PIPE_FIX, FlagID); // Vec0 signal
+wait_intra_block(PIPE_FIX, FlagID+16); // Vec1 signal
 ```
 
-#### 核间同步最佳实践
+#### Best practices for inter-core synchronization
 
-**1. FlagID管理**: 为每个TPipe分配独立的FlagID，避免冲突
+**1. FlagID management**: Assign an independent FlagID to each TPipe to avoid conflicts
 
-**2. FIFO深度设置**: 推荐使用深度=2
+**2. FIFO depth setting**: It is recommended to use depth=2
 
-**3. 同步顺序匹配**: 一个TPUSH必须对应一个TPOP + TFREE
+**3. Synchronization sequence matching**: A TPUSH must correspond to a TPOP + TFREE
 
-**4. 错误示例**:
+**4. Error example**:
 ```cpp
-// 错误：连续两次TPUSH，没有对应的TPOP
+// Error: TPUSH twice in succession, no corresponding TPOP
 TPUSH(pipe, tile1);
 TPUSH(pipe, tile2);  // ERROR
 
-// 正确：
+// Correct:
 TPUSH(pipe, tile1);
-// ... 消费者核 ...
+// ... consumer core ...
 TPOP(pipe, vecTile1);
 TFREE(pipe);
-// 然后才能进行下一次TPUSH
+// Then the next TPUSH can be performed
 ```
 
-#### 融合算子中的核间同步
+#### Inter-core synchronization in fusion operator
 
-当算子涉及Vector计算和Cube计算的交替使用时，需要在切换点使用TPUSH/TPOP：
+When the operator involves the alternate use of Vector calculation and Cube calculation, TPUSH/TPOP needs to be used at the switching point:
 
-| 切换场景 | 数据流 | 方向 | 核间同步 |
+| Switch scene | Data flow | Direction | Inter-core synchronization |
 |---------|-------|------|---------|
 | Vector → Cube | UB → L1 | V2C | TPUSH (Vec) + TPOP (Cube) |
 | Cube → Vector | L0C → UB | C2V | TPUSH (Cube) + TPOP (Vec) |
 
-**Flash Attention核间同步示例**:
-- Phase 1 (Vector): K转置 → TPUSH K^T到Cube核 (V2C)
-- Phase 2 (Cube): QK矩阵乘 → TPUSH Score到Vector核 (C2V)
-- Phase 3 (Vector): Softmax归一化 → TPUSH P到Cube核 (V2C)
-- Phase 4 (Cube): PV矩阵乘 → TSTORE输出
+**Flash Attention inter-core synchronization example**:
+- Phase 1 (Vector): K transpose → TPUSH K^T to Cube core (V2C)
+- Phase 2 (Cube): QK matrix multiplication → TPUSH Score to Vector core (C2V)
+- Phase 3 (Vector): Softmax normalization → TPUSH P to Cube core (V2C)
+- Phase 4 (Cube): PV matrix multiplication → TSTORE output
 
-详细参考: `/home/developer/.agents/skills/pto-isa-operator-implementation/TPUSH_TPOP_GUIDE.md`
+Detailed reference: `/home/developer/.agents/skills/pto-isa-operator-implementation/TPUSH_TPOP_GUIDE.md`
 
-## 示例
+## Example
 
-### 示例1: ReLU激活函数
+### Example 1: ReLU activation function
 
-**算子功能**: ReLU(x) = max(0, x)
+**Operator function**: ReLU(x) = max(0, x)
 
-**ISA指令**: TLOAD → TRELU → TSTORE
+**ISA instruction**: TLOAD → TRELU → TSTORE
 
-**Kernel代码**:
+**Kernel code**:
 ```cpp
 namespace ReLU {
 
@@ -993,13 +993,13 @@ template void launchReLU<aclFloat16, 16, 256, 16, 256>(aclFloat16 *out, aclFloat
 } // namespace ReLU
 ```
 
-### 示例2: 逐元素加法 (TADD)
+### Example 2: Element-wise addition (TADD)
 
-**算子功能**: dst = src0 + src1
+**Operator function**: dst = src0 + src1
 
-**ISA指令**: TLOAD → TLOAD → TADD → TSTORE
+**ISA instructions**: TLOAD → TLOAD → TADD → TSTORE
 
-**Kernel代码**:
+**Kernel code**:
 ```cpp
 namespace TAdd {
 
@@ -1050,13 +1050,13 @@ template void launchTAdd<aclFloat16, 16, 256, 16, 256>(aclFloat16 *out, aclFloat
 } // namespace TAdd
 ```
 
-### 示例3: Softmax归一化
+### Example 3: Softmax normalization
 
-**算子功能**: Softmax(x) = exp(x) / sum(exp(x))
+**Operator function**: Softmax(x) = exp(x) / sum(exp(x))
 
-**ISA指令**: TLOAD → TEXP → TCOLSUM → TCOLEXPANDDIV → TSTORE
+**ISA instructions**: TLOAD → TEXP → TCOLSUM → TCOLEXPANDDIV → TSTORE
 
-**Kernel代码**:
+**Kernel code**:
 ```cpp
 namespace Softmax {
 
@@ -1113,13 +1113,13 @@ template void launchSoftmax<aclFloat16, 16, 256, 16, 256>(aclFloat16 *out, aclFl
 } // namespace Softmax
 ```
 
-### 示例4: Batch Normalization
+### Example 4: Batch Normalization
 
-**算子功能**: BN(x) = (x - mean) / sqrt(var + eps) * gamma + beta
+**Operator function**: BN(x) = (x - mean) / sqrt(var + eps) * gamma + beta
 
-**ISA指令**: TLOAD → TSUBS → TDIVS → TMULS → TADDS → TSTORE
+**ISA instructions**: TLOAD → TSUBS → TDIVS → TMULS → TADDS → TSTORE
 
-**Kernel代码**:
+**Kernel code**:
 ```cpp
 namespace BatchNorm {
 
@@ -1177,15 +1177,15 @@ template void launchBatchNorm<aclFloat16, 16, 256, 16, 256>(aclFloat16 *out, acl
 } // namespace BatchNorm
 ```
 
-### 示例5: 矩阵乘法 (TMATMUL) - Cube核心
+### Example 5: Matrix Multiplication (TMATMUL) - Cube Core
 
-**算子功能**: C = A * B (矩阵乘法)
+**Operator function**: C = A * B (matrix multiplication)
 
-**ISA指令**: TLOAD → TMOV → TMATMUL → TSTORE (GM → L1 → L0 → L0C → GM)
+**ISA instruction**: TLOAD → TMOV → TMATMUL → TSTORE (GM → L1 → L0 → L0C → GM)
 
-**重要**: 矩阵乘法使用Cube核心，需要使用`DAV_CUBE`宏判断执行路径。
+**Important**: Matrix multiplication uses the Cube core, and you need to use the `DAV_CUBE` macro to determine the execution path.
 
-**Kernel代码**:
+**Kernel code**:
 ```cpp
 namespace MatMul {
 
@@ -1275,239 +1275,239 @@ template void launchMatMul<half, half, half, 16, 16, 16>(half *out, half *src0, 
 } // namespace MatMul
 ```
 
-## 最佳实践
+## Best Practices
 
-### 1. ISA指令选择原则
+### 1. ISA instruction selection principles
 
-**最小化指令数量**: 使用最少指令完成功能，减少数据搬运开销。
+**Minimize the number of instructions**: Use the minimum number of instructions to complete the function and reduce data transfer overhead.
 
-**优先使用融合指令**: 选择融合指令减少中间步骤：
-- TAXPY (融合乘加) - Vector计算
-- TMATMUL_ACC (融合累加矩阵乘) - Cube计算
-- TMATMUL_BIAS (融合加偏置矩阵乘) - Cube计算
-- TROWEXPANDADD (融合广播加法) - Vector计算
-- TADDC/TSUBC (融合三元运算) - Vector计算
+**Prefer using fusion instructions**: Choose fusion instructions to reduce intermediate steps:
+- TAXPY (Fusion Multiply and Add) - Vector calculation
+- TMATMUL_ACC (fused accumulation matrix multiplication) - Cube calculation
+- TMATMUL_BIAS (fusion plus bias matrix multiplication) - Cube calculation
+- TROWEXPANDADD (fusion broadcast addition) - Vector calculation
+- TADDC/TSUBC (Fusion Ternary Operation) - Vector calculation
 
-**选择合适的数据流**: 根据算子特性选择最优数据流路径。
-- **Vector计算**: 使用GM → UB → V → UB → GM数据流，适用于逐元素操作
-- **Cube计算**: 使用GM → L1 → L0A/L0B → L0C → GM数据流，适用于矩阵乘法
+**Select the appropriate data flow**: Select the optimal data flow path based on the operator characteristics.
+- **Vector calculation**: Use GM → UB → V → UB → GM data flow, suitable for element-by-element operations
+- **Cube calculation**: using GM → L1 → L0A/L0B → L0C → GM data flow, suitable for matrix multiplication
 
-### 2. 数据流优化
+### 2. Data flow optimization
 
-**Vector计算优化**:
-- 尽量在UB上进行多次计算
-- 使用原地操作减少中间Tile
-- 合理使用缓冲区重用
-- 避免不必要的TMOV操作
+**Vector calculation optimization**:
+- Try to perform multiple calculations on UB
+- Use in-place operations to reduce intermediate tiles
+- Proper use of buffer reuse
+- Avoid unnecessary TMOV operations
 
-**Cube计算优化**:
-- 合理规划L1和L0缓冲区大小
-- 使用TileType::Mat和TileType::Vec的转换
-- 优化矩阵分块策略
-- 减少GM访问次数
+**Cube calculation optimization**:
+- Properly plan L1 and L0 buffer sizes
+- Conversion using TileType::Mat and TileType::Vec
+- Optimize matrix blocking strategy
+- Reduce the number of GM visits
 
-**对齐和布局**:
-- RowMajor: cols需要32字节对齐
-- ColMajor: rows需要32字节对齐
-- 使用constexpr计算对齐维度
+**Alignment and Layout**:
+- RowMajor: cols require 32-byte alignment
+- ColMajor: rows require 32-byte alignment
+- Use constexpr to calculate alignment dimensions
 
-### 3. 同步策略选择
+### 3. Synchronization strategy selection
 
-**推荐Event同步**:
-- 自动依赖跟踪
-- 编译器优化友好
-- 代码简洁易维护
-- 支持手动和自动模式
+**Event synchronization is recommended**:
+- Automatic dependency tracking
+- Compiler optimization friendly
+- The code is concise and easy to maintain
+- Supports manual and automatic modes
 
-**备选手动同步**:
-- 复杂流水线控制
-- 需要细粒度同步
-- 性能关键路径优化
+**Alternative Manual Sync**:
+- Complex pipeline control
+- Requires fine-grained synchronization
+- Performance critical path optimization
 
-### 4. Tile维度选择
+### 4. Tile dimension selection
 
-**常见Tile维度配置**:
-| 数据类型 | 推荐Tile维度 |
+**Common Tile dimension configuration**:
+| Data type | Recommended Tile dimensions |
 |---------|-------------|
 | float | 64x64, 32x32, 16x16 |
 | aclFloat16 | 16x256, 8x768, 4x1024 |
 | int32 | 64x64, 32x32 |
 | int16 | 64x128, 32x256 |
 
-### 5. 类型处理
+### 5. Type processing
 
-**aclFloat16转换**:
-- API类型: aclFloat16
-- 硬件类型: half
-- launch函数中进行转换
+**aclFloat16 conversion**:
+- API type: aclFloat16
+- Hardware type: half
+- Conversion in launch function
 
-**混合精度支持**:
-- 使用模板参数支持多类型
-- 标量参数统一使用float
+**Mixed Precision Support**:
+- Support multiple types using template parameters
+- Use float for scalar parameters uniformly
 
-### 6. 代码组织
+### 6. Code organization
 
-**命名规范**:
-- Kernel文件: `t<操作指令>_kernel.cpp`
-- 命名空间: `OperatorName`
-- 函数名: `runOperator`, `launchOperator`
+**Naming convention**:
+- Kernel file: `t<operation command>_kernel.cpp`
+- Namespace: `OperatorName`
+- Function name: `runOperator`, `launchOperator`
 
-**模板实例化**:
-- 为常用配置提供显式实例化
-- 减少编译时间
-- 确保代码可链接
+**Template instantiation**:
+- Provide explicit instantiation for common configurations
+- Reduce compilation time
+- Make sure the code is linkable
 
-## 常见问题
+## FAQ
 
-### Q1: 如何选择合适的ISA指令组合?
+### Q1: How to choose the appropriate ISA instruction combination?
 
-**回答**:
-1. 分析算子功能，分解为基本操作
-2. 在PTOISA_zh.md中查找对应指令
-3. 按数据流顺序排列指令
-4. 检查指令间的依赖关系
-5. 考虑融合指令减少步骤
+**Answer**:
+1. Analyze operator functions and decompose them into basic operations
+2. Find the corresponding instructions in PTOISA.md
+3. Arrange instructions in data flow order
+4. Check the dependencies between instructions
+5. Consider fusion instruction reduction steps
 
-### Q2: 数据流顺序是什么?
+### Q2: What is the data flow sequence?
 
-**回答**:
-PTO有两种主要的数据流模式:
+**Answer**:
+PTO has two main data flow modes:
 
-**1. Vector计算数据流 (逐元素操作)**: gm → ub → vector → ub → gm
-- **阶段1**: GM → UB (TLOAD)
-- **阶段2/3**: Vector计算 (TADD/TMUL/TEXP等)
-- **阶段5**: UB → GM (TSTORE)
+**1. Vector calculation data flow (element-by-element operation)**: gm → ub → vector → ub → gm
+- **Phase 1**: GM → UB (TLOAD)
+- **Phase 2/3**: Vector calculation (TADD/TMUL/TEXP, etc.)
+- **Phase 5**: UB → GM (TSTORE)
 
-**2. Cube计算数据流 (矩阵乘法)**: GM → L1 → L0A/L0B → L0C → GM
-- **阶段1**: GM → L1 (TLOAD)
-- **阶段2**: L1 → L0A/L0B (TMOV)
-- **阶段3**: Cube计算 (TMATMUL)
-- **阶段4**: L0C → GM (TSTORE)
+**2. Cube calculation data flow (matrix multiplication)**: GM → L1 → L0A/L0B → L0C → GM
+- **Phase 1**: GM → L1 (TLOAD)
+- **Phase 2**: L1 → L0A/L0B (TMOV)
+- **Phase 3**: Cube calculation (TMATMUL)
+- **Phase 4**: L0C → GM (TSTORE)
 
-**关键区别**:
-- Vector计算使用UB缓冲区，适用于逐元素操作
-- Cube计算使用L1和L0缓冲区，适用于矩阵乘法
+**Key differences**:
+- Vector calculations use UB buffers, suitable for element-by-element operations
+- Cube calculations use L1 and L0 buffers, suitable for matrix multiplication
 
-### Q3: 何时使用Event同步，何时使用手动同步?
+### Q3: When to use Event synchronization and when to use manual synchronization?
 
-**回答**:
-- **Event同步（推荐）**: 简单融合、清晰依赖关系、自动模式支持
-- **手动同步**: 复杂流水线、细粒度控制、性能优化
+**Answer**:
+- **Event synchronization (recommended)**: simple integration, clear dependencies, automatic mode support
+- **Manual synchronization**: complex pipeline, fine-grained control, performance optimization
 
-### Q4: 如何处理复杂算子（如GELU、LayerNorm）?
+### Q4: How to deal with complex operators (such as GELU, LayerNorm)?
 
-**回答**:
-1. 将复杂算子分解为多个基本操作
-2. 为每个基本操作选择对应ISA指令
-3. 合理安排中间Tile缓冲区
-4. 优化数据流减少搬运
-5. 考虑使用近似计算简化实现
+**Answer**:
+1. Decompose complex operators into multiple basic operations
+2. Select the corresponding ISA instruction for each basic operation
+3. Reasonably arrange the intermediate Tile buffer
+4. Optimize data flow and reduce handling
+5. Consider using approximate calculations to simplify implementation
 
-### Q5: Tile维度如何选择?
+### Q5: How to choose Tile dimensions?
 
-**回答**:
-- 根据数据类型选择对齐维度
-- 考虑片上存储容量限制
-- 平衡计算效率和存储开销
-- 使用constexpr计算对齐维度
+**Answer**:
+- Select alignment dimensions based on data type
+- Consider on-chip storage capacity limitations
+- Balance computing efficiency and storage overhead
+- Use constexpr to calculate alignment dimensions
 
-### Q6: 如何验证ISA指令选择是否正确?
+### Q6: How to verify whether the ISA instruction selection is correct?
 
-**回答**:
-1. 检查指令功能是否匹配算子需求
-2. 验证数据流完整性（GM → UB → GM）
-3. 确认同步机制正确设置
-4. 在CPU模拟器上测试
-5. 与golden结果对比验证
+**Answer**:
+1. Check whether the instruction function matches the operator requirements
+2. Verify data flow integrity (GM → UB → GM)
+3. Confirm that the synchronization mechanism is correctly set up
+4. Test on CPU emulator
+5. Compare and verify with golden results
 
-### Q7: 标量参数如何处理?
+### Q7: How to deal with scalar parameters?
 
-**回答**:
-- 标量参数统一使用float类型
-- 在指令调用前转换为Tile数据类型: `(T)scalar`
-- 使用标量指令(TADDS/TMULS等)而不是Tile指令
+**Answer**:
+- Scalar parameters use float type uniformly
+- Convert to Tile data type before instruction call: `(T)scalar`
+- Use scalar instructions (TADDS/TMULS, etc.) instead of Tile instructions
 
-### Q8: 何时使用Vector数据流，何时使用Cube数据流?
+### Q8: When to use Vector data flow and when to use Cube data flow?
 
-**回答**:
-根据算子类型选择合适的数据流:
+**Answer**:
+Choose the appropriate data stream based on the operator type:
 
-**使用Vector数据流 (GM → UB → V → UB → GM)**:
-- 逐元素操作: TADD, TSUB, TMUL, TDIV, TMAX, TMIN
-- 数学函数: TEXP, TLOG, TSQRT, TPOW
-- 激活函数: TRELU, TPRELU, TLRELU
-- 标量操作: TADDS, TMULS, TDIVS
-- 轴归约: TROWSUM, TCOLSUM, TROWMAX
-- 广播操作: TROWEXPANDADD, TCOLEXPANDADD
-- 类型转换: TCVT
+**Use Vector data stream (GM → UB → V → UB → GM)**:
+- Element-wise operations: TADD, TSUB, TMUL, TDIV, TMAX, TMIN
+- Mathematical functions: TEXP, TLOG, TSQRT, TPOW
+- Activation function: TRELU, TPRELU, TLRELU
+- Scalar operations: TADDS, TMULS, TDIVS
+- Axis reduction: TROWSUM, TCOLSUM, TROWMAX
+- Broadcast operations: TROWEXPANDADD, TCOLEXPANDADD
+- Type conversion: TCVT
 
-**使用Cube数据流 (GM → L1 → L0A/L0B → L0C → GM)**:
-- 矩阵乘法: TMATMUL, TMATMUL_ACC, TMATMUL_BIAS
-- 矩阵向量乘: TGEMV, TGEMV_ACC, TGEMV_BIAS
-- 需要使用TileType::Mat的矩阵操作
+**Using Cube data stream (GM → L1 → L0A/L0B → L0C → GM)**:
+- Matrix multiplication: TMATMUL, TMATMUL_ACC, TMATMUL_BIAS
+- Matrix vector multiplication: TGEMV, TGEMV_ACC, TGEMV_BIAS
+- Requires matrix operations using TileType::Mat
 
-**判断方法**:
-- 如果使用TileType::Vec → Vector数据流
-- 如果使用TileType::Mat → Cube数据流
+**Judgment method**:
+- If using TileType::Vec → Vector data stream
+- If using TileType::Mat → Cube data stream
 
-### Q9: 矩阵乘法中TMOV的作用是什么?
+### Q9: What is the role of TMOV in matrix multiplication?
 
-**回答**:
-TMOV在矩阵乘法中用于数据搬运:
+**Answer**:
+TMOV is used for data handling in matrix multiplication:
 
-**数据流**: L1 → L0A/L0B
+**Data flow**: L1 → L0A/L0B
 
-**具体作用**:
-- TLOAD将矩阵数据加载到L1Buffer (MatTile)
-- TMOV将MatTile数据搬运到L0Buffer (LeftTile和RightTile)
-- TMATMUL在L0Buffer执行计算
+**Specific functions**:
+- TLOAD loads matrix data into L1Buffer (MatTile)
+- TMOV moves MatTile data to L0Buffer (LeftTile and RightTile)
+- TMATMUL performs calculations in L0Buffer
 
-**为什么需要TMOV**:
-- L1Buffer和L0Buffer是不同的物理存储区域
-- L1Buffer用于存储加载的原始数据
-- L0Buffer是Cube计算单元的专用缓冲区 (L0A/L0B)
-- TMOV将数据从L1搬运到L0，准备矩阵乘法计算
+**Why TMOV is needed**:
+- L1Buffer and L0Buffer are different physical storage areas
+- L1Buffer is used to store loaded raw data
+- L0Buffer is the dedicated buffer (L0A/L0B) of the Cube computing unit
+- TMOV transfers data from L1 to L0 and prepares for matrix multiplication calculations
 
-### Q10: 核间同步(TPUSH/TPOP)何时使用?
+### Q10: When is inter-core synchronization (TPUSH/TPOP) used?
 
-**回答**:
-当算子涉及Vector核和Cube核之间的数据传输时，必须使用TPUSH/TPOP:
+**Answer**:
+When the operator involves data transmission between the Vector core and Cube core, TPUSH/TPOP must be used:
 
-**使用场景**:
-- Vector核计算结果需要传给Cube核进行矩阵乘法
-- Cube核矩阵乘法结果需要传给Vector核进行逐元素操作
-- 融合算子中Vector/Cube交替使用
+**Usage Scenario**:
+- The calculation results of the Vector core need to be passed to the Cube core for matrix multiplication
+- Cube core matrix multiplication results need to be passed to the Vector core for element-by-element operations
+- Vector/Cube are used alternately in the fusion operator
 
-**不使用TPUSH/TPOP的场景**:
-- 同一核内部的数据搬运使用TMOV
-- 纯Vector计算或纯Cube计算不需要核间同步
+**Scenarios without using TPUSH/TPOP**:
+- Data transfer within the same core uses TMOV
+- Pure Vector calculation or pure Cube calculation does not require inter-core synchronization
 
-## 参考资料
+## References
 
-- **ISA参考**: `pto-isa/docs/PTOISA_zh.md` - PTO指令索引
-- **ISA详细文档**: `pto-isa/docs/isa/` - 各指令详细说明
-  - `docs/isa/TMATMUL_zh.md` - 矩阵乘法指令
-  - `docs/isa/TLOAD_zh.md` - 数据加载指令
-  - `docs/isa/TMOV_zh.md` - 数据搬运指令
-- **C++ API**: `include/pto/pto-inst.hpp` - PTO指令C++接口
-- **常量定义**: `include/pto/common/constants.hpp` - 流水线、事件ID等常量
-- **测试示例**: `tests/npu/a2a3/src/st/testcase/` - 算子实现示例
-- **融合算子指南**: `vector-fusion-operator-generate` skill - 融合算子开发完整流程
+- **ISA Reference**: `pto-isa/docs/PTOISA.md` - PTO instruction index
+- **ISA detailed documentation**: `pto-isa/docs/isa/` - Detailed description of each command
+  - `docs/isa/TMATMUL.md` - Matrix multiplication instructions
+  - `docs/isa/TLOAD.md` - data loading instructions
+  - `docs/isa/TMOV.md` - Data transfer instructions
+- **C++ API**: `include/pto/pto-inst.hpp` - PTO instruction C++ interface
+- **Constant definition**: `include/pto/common/constants.hpp` - Pipeline, event ID and other constants
+- **Test example**: `tests/npu/a2a3/src/st/testcase/` - Example of operator implementation
+- **Fusion Operator Guide**: `vector-fusion-operator-generate` skill - Complete process of fusion operator development
 
-## 总结
+## Summary
 
-本skill提供了使用PTO-ISA实现指定算子功能的完整流程：
+This skill provides a complete process for using PTO-ISA to implement the specified operator function:
 
-1. **步骤1**: 阅读PTOISA_zh.md，了解指令集
-2. **步骤2**: 分析算子需求，列举ISA指令
-3. **步骤3**: 按数据流顺序解释指令功能
-   - Vector计算: GM → UB → V → UB → GM
-   - Cube计算: GM → L1 → L0A/L0B → L0C → GM
-4. **步骤4**: 输出完整kernel代码
+1. **Step 1**: Read PTOISA.md to understand the instruction set
+2. **Step 2**: Analyze operator requirements and list ISA instructions
+3. **Step 3**: Explain the command function in the order of data flow
+   - Vector calculation: GM → UB → V → UB → GM
+   - Cube calculation: GM → L1 → L0A/L0B → L0C → GM
+4. **Step 4**: Output the complete kernel code
 
-通过遵循本指南，开发者可以系统性地选择ISA指令、理解两种数据流模式(Vector和Cube)、生成高质量kernel代码。
+By following this guide, developers can systematically select ISA instructions, understand the two data flow modes (Vector and Cube), and generate high-quality kernel code.
 
-**关键要点**:
-- **Vector计算**: 使用UB缓冲区，适用于逐元素操作，流水线 MTE2 → V → MTE3
-- **Cube计算**: 使用L1和L0缓冲区，适用于矩阵乘法，流水线 MTE2 → MTE1 → M → FIX → MTE3
-- **TMOV关键作用**: 在矩阵乘法中将L1数据搬运到L0，准备Cube计算
+**Key Takeaways**:
+- **Vector calculation**: Use UB buffer, suitable for element-by-element operation, pipeline MTE2 → V → MTE3
+- **Cube Computation**: Using L1 and L0 buffers, suitable for matrix multiplication, pipeline MTE2 → MTE1 → M → FIX → MTE3
+- **Key role of TMOV**: Move L1 data to L0 in matrix multiplication to prepare for Cube calculation

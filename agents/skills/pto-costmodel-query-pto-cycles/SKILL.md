@@ -1,95 +1,95 @@
 ---
-name: PTO Costmodel Cycles 查询指南
-description: 本指南介绍如何使用 PTO Costmodel 获取单条 PTO ISA 指令的仿真 cycles 数，涵盖 costmodel 两种使用场景、查询脚本用法、各指令类型的 C++ 模板以及编译运行方法
+name: PTO Costmodel Cycles Query Guide
+description: This guide introduces how to use PTO Costmodel to obtain the number of simulation cycles of a single PTO ISA instruction, covering two usage scenarios of costmodel, query script usage, C++ templates for each instruction type, and compilation and running methods.
 license: CANN Open Software License Agreement Version 2.0
 ---
 
-# PTO Costmodel Cycles 查询指南
+# PTO Costmodel Cycles Query Guide
 
-本指南介绍如何使用 PTO Costmodel 获取 PTO ISA 指令的仿真 cycles。
+This guide describes how to use PTO Costmodel to obtain simulated cycles for PTO ISA instructions.
 
-## 目录
-1. [概述](#概述)
-2. [查询前的输入信息确认](#查询前的输入信息确认)
-3. [查询单条指令 Cycles](#查询单条指令-cycles)
-4. [脚本不存在时的生成方法](#脚本不存在时的生成方法)
-5. [架构参数](#架构参数)
-6. [ST 测试套件](#st-测试套件)
+## Directory
+1. [Overview](#overview)
+2. [Confirmation of input information before query](#Confirmation of input information before query)
+3. [Query single instruction Cycles](#Query single instruction-cycles)
+4. [Generation method when script does not exist](#Generation method when script does not exist)
+5. [Architecture Parameters](#Architecture Parameters)
+6. [ST Test Suite](#st-testsuite)
 
-## 概述
+## Overview
 
-PTO costmodel 是 PTO ISA 的性能仿真模型，模拟 Ascend NPU (A2/A3, `__NPU_ARCH__=2201`) 上的指令执行耗时，纯 CPU 运行，不需要真实硬件。
+PTO costmodel is the performance simulation model of PTO ISA, which simulates the instruction execution time on Ascend NPU (A2/A3, `__NPU_ARCH__=2201`). It runs purely on CPU and does not require real hardware.
 
-核心原理：当编译时定义了 `__COSTMODEL` 宏后，`#include <pto/pto-inst.hpp>` 会自动将所有 PTO 指令替换为 costmodel 版本，指令执行时会通过 trace 系统（`BeginPtoInstr`/`EndPtoInstr` + `RecordCceCall`）记录周期数，用户可通过 API 查询。
+Core principle: When the `__COSTMODEL` macro is defined during compilation, `#include <pto/pto-inst.hpp>` will automatically replace all PTO instructions with the costmodel version. When the instructions are executed, the number of cycles will be recorded through the trace system (`BeginPtoInstr`/`EndPtoInstr` + `RecordCceCall`), and users can query it through the API.
 
-**当前 costmodel 的能力边界：**
-- **已支持**：单条 PTO ISA 指令级别的 cycles 查询（如 TADD、TMATMUL 等单条指令在指定 shape 和 dtype 下的仿真耗时）
-- **未支持**：算子级（多个 PTO 指令组合）的性能仿真，该能力待未来开发
+**Capability boundary of current costmodel:**
+- **Supported**: Single PTO ISA instruction level cycles query (such as the simulation time of a single instruction such as TADD and TMATMUL under the specified shape and dtype)
+- **Not supported**: Performance simulation at the operator level (combination of multiple PTO instructions), this capability needs to be developed in the future
 
-> **重要：当前 costmodel 仅支持 A2/A3 平台（`__NPU_ARCH__=2201`），仿真结果仅反映该平台的性能特征。** 其他平台的结果可能不同。
+> **Important: The current costmodel only supports the A2/A3 platform (`__NPU_ARCH__=2201`), and the simulation results only reflect the performance characteristics of this platform. ** Results on other platforms may vary.
 
 ---
 
-## 查询前的输入信息确认
+## Confirm the input information before querying
 
-在执行查询之前，**必须确认用户已提供以下信息**。如果缺少任何一项，请主动向用户询问：
+Before executing the query, **must confirm that the user has provided the following information**. If any item is missing, please proactively ask the user:
 
-### 通用必需信息
+### General required information
 
-| 信息 | 说明 | 示例 |
+| Information | Description | Example |
 |------|------|------|
-| **指令名称** | 要查询的 PTO 指令 | `TADD`, `TMUL`, `TEXP`, `TMATMUL` 等 |
-| **数据类型** | Tile 的元素类型 | `float`, `half`, `bf16`, `int32`, `int16`, `int8`, `uint8` |
-| **Tile Shape** | Tile 的行数和列数 | `16x16`, `64x64`, `16x256` 等 |
+| **Instruction name** | The PTO instruction to be queried | `TADD`, `TMUL`, `TEXP`, `TMATMUL`, etc. |
+| **Data type** | Tile element type | `float`, `half`, `bf16`, `int32`, `int16`, `int8`, `uint8` |
+| **Tile Shape** | Number of rows and columns of Tile | `16x16`, `64x64`, `16x256`, etc. |
 
-### 特定指令的额外信息
+### Additional information for specific instructions
 
-| 指令类型 | 额外必需信息 | 示例 |
+| Command type | Additional required information | Example |
 |----------|-------------|------|
-| **TCVT** | 源类型 + 目标类型（两种类型不同） | 源=`float`, 目标=`half` |
-| **TMATMUL** | A/B/Output 三种类型 + M/K/N 三个维度 | A=`half`, B=`half`, Out=`float`, M=128, K=64, N=128 |
+| **TCVT** | Source type + destination type (the two types are different) | source=`float`, destination=`half` |
+| **TMATMUL** | A/B/Output three types + M/K/N three dimensions | A=`half`, B=`half`, Out=`float`, M=128, K=64, N=128 |
 
-### 缺少信息时的提示话术
+### Tips for missing information
 
-- 缺少指令名称：`"请问您想查询哪条 PTO 指令的 cycles？（如 TADD、TMUL、TMATMUL 等）"`
-- 缺少数据类型：`"请问数据类型是什么？支持 float/half/bf16/int32/int16/int8/uint8"`
-- 缺少 shape：`"请问 Tile 的 shape 是多少？（如 16x16, 64x64, 32x256）"`
-- TMATMUL 缺少维度：`"TMATMUL 需要 M、K、N 三个维度，请提供具体数值（如 M=128, K=64, N=128）"`
-- TCVT 缺少类型：`"TCVT 需要指定源类型和目标类型（如 float 转 half）"`
+- Missing instruction name: `"Which PTO instruction do you want to query the cycles of? (such as TADD, TMUL, TMATMUL, etc.)"`
+- Missing data type: `"What is the data type? Support float/half/bf16/int32/int16/int8/uint8"`
+- Missing shape: `"What is the shape of Tile? (such as 16x16, 64x64, 32x256)"`
+- TMATMUL is missing dimensions: `"TMATMUL requires three dimensions: M, K, and N. Please provide specific values (such as M=128, K=64, N=128)"`
+- TCVT missing type: `"TCVT needs to specify the source type and target type (such as float to half)"`
 
 ---
 
-## 查询单条指令 Cycles
+## Query a single instruction Cycles
 
-### 使用查询脚本（推荐）
+### Use query script (recommended)
 
-脚本路径：`tools/query_pto_cycles.py`
+Script path: `tools/query_pto_cycles.py`
 
-脚本会自动生成最小的 C++ 文件，编译运行，打印 cycles，无残留文件。
+The script will automatically generate the smallest C++ file, compile and run, print cycles, and leave no residual files.
 
-#### 用法
+#### Usage
 
 ```bash
-# Unary 指令 (TEXP, TNEG, TRECIP, TRSQRT, TSQRT, TABS)
-python3 tools/query_pto_cycles.py <指令> <数据类型> -r <行> -c <列>
+# Unary instructions (TEXP, TNEG, TRECIP, TRSQRT, TSQRT, TABS)
+python3 tools/query_pto_cycles.py <command> <data type> -r <row> -c <column>
 
-# Binary 指令 (TADD, TSUB, TMUL, TDIV, TMAX, TMIN, TADDS, TSUBS, TMULS, TDIVS, TMAXS, TMINS, TSEL, TSELS, TCMP)
-python3 tools/query_pto_cycles.py <指令> <数据类型> -r <行> -c <列>
+# Binary instructions (TADD, TSUB, TMUL, TDIV, TMAX, TMIN, TADDS, TSUBS, TMULS, TDIVS, TMAXS, TMINS, TSEL, TSELS, TCMP)
+python3 tools/query_pto_cycles.py <command> <data type> -r <row> -c <column>
 
-# Row Reduce 指令 (TROWSUM, TROWMAX, TROWMIN)
-python3 tools/query_pto_cycles.py <指令> <数据类型> -r <行> -c <列>
+# Row Reduce instructions (TROWSUM, TROWMAX, TROWMIN)
+python3 tools/query_pto_cycles.py <command> <data type> -r <row> -c <column>
 
-# Col Reduce 指令 (TCOLSUM, TCOLMAX, TCOLMIN)
-python3 tools/query_pto_cycles.py <指令> <数据类型> -r <行> -c <列>
+# Col Reduce instructions (TCOLSUM, TCOLMAX, TCOLMIN)
+python3 tools/query_pto_cycles.py <command> <data type> -r <row> -c <column>
 
-# 类型转换 (TCVT): 第一个参数=目标类型, 第二个=源类型
-python3 tools/query_pto_cycles.py TCVT <目标类型> <源类型> -r <行> -c <列>
+# Type conversion (TCVT): first parameter = target type, second = source type
+python3 tools/query_pto_cycles.py TCVT <target type> <source type> -r <row> -c <column>
 
-# 矩阵乘法 (TMATMUL): dtype1=A矩阵类型, dtype2=B矩阵类型, dtype3=输出类型
-python3 tools/query_pto_cycles.py TMATMUL <A类型> <B类型> <输出类型> --m <M> --k <K> --n <N>
+# Matrix multiplication (TMATMUL): dtype1=A matrix type, dtype2=B matrix type, dtype3=output type
+python3 tools/query_pto_cycles.py TMATMUL <A type> <B type> <Output type> --m <M> --k <K> --n <N>
 ```
 
-#### 示例
+#### Example
 
 ```bash
 python3 tools/query_pto_cycles.py TEXP float -r 16 -c 16
@@ -111,13 +111,13 @@ python3 tools/query_pto_cycles.py TMATMUL half half float --m 128 --k 64 --n 128
 # => [CYCLE] TMATMUL.float<half,half>_128x64x128 actual=262
 ```
 
-#### 支持的数据类型
+#### Supported data types
 
 `float` / `fp32`, `half` / `fp16`, `bf16`, `int32`, `int16`, `int8`, `uint8`
 
-#### 支持的指令
+#### Supported commands
 
-| 类别 | 指令 |
+| Category | Command |
 |------|------|
 | Unary | TEXP, TNEG, TRECIP, TRSQRT, TSQRT, TABS |
 | Binary | TADD, TSUB, TMUL, TDIV, TMAX, TMIN, TMAXS, TMINS, TADDS, TSUBS, TMULS, TDIVS, TSEL, TSELS, TCMP |
@@ -126,19 +126,19 @@ python3 tools/query_pto_cycles.py TMATMUL half half float --m 128 --k 64 --n 128
 | Convert | TCVT |
 | Matmul | TMATMUL |
 
-## 脚本不存在时的生成方法
+## Generate method when the script does not exist
 
-脚本路径为项目根目录下 `tools/query_pto_cycles.py`。如果不存在，按以下说明创建。
+The script path is `tools/query_pto_cycles.py` in the project root directory. If it does not exist, follow the instructions below to create it.
 
-脚本的核心逻辑：
-1. 根据用户输入的指令名和数据类型，从预定义的指令分类（UNARY / BINARY / ROW_REDUCE / COL_REDUCE / CVT / MATMUL）确定指令签名
-2. 用 Python 的 textwrap.dedent 生成对应的 C++ 源码，核心模板如下：
+The core logic of the script:
+1. Determine the instruction signature from the predefined instruction classification (UNARY/BINARY/ROW_REDUCE/COL_REDUCE/CVT/MATMUL) based on the instruction name and data type entered by the user.
+2. Use Python’s textwrap.dedent to generate the corresponding C++ source code. The core template is as follows:
 
-### 各类型指令的 C++ 模板
+### C++ templates for various types of instructions
 
-`{dtype}`, `{rows}`, `{cols}`, `{instr}` 为占位符。
+`{dtype}`, `{rows}`, `{cols}`, `{instr}` are placeholders.
 
-**Unary（单输入）：**
+**Unary (single input):**
 ```cpp
 #include <pto/pto-inst.hpp>
 #include <pto/common/constants.hpp>
@@ -153,53 +153,53 @@ int main() {
     TileData dstTile({rows}, {cols});
     TASSIGN(srcTile, 0x0);
     TASSIGN(dstTile, 0x8000);
-    {instr}(dstTile, srcTile);  // 如: TEXP(dstTile, srcTile)
+    {instr}(dstTile, srcTile); // For example: TEXP(dstTile, srcTile)
     uint64_t cycles = GetLastPtoInstrCycles();
     std::printf("[CYCLE] ... actual=%llu\n", (unsigned long long)cycles);
     return 0;
 }
 ```
 
-**Binary（双输入）：**
+**Binary (dual input):**
 ```cpp
-    // 同上，但创建 src0Tile, src1Tile, dstTile
-    {instr}(dstTile, src0Tile, src1Tile);  // 如: TADD(dstTile, src0Tile, src1Tile)
+    // Same as above, but create src0Tile, src1Tile, dstTile
+    {instr}(dstTile, src0Tile, src1Tile); // For example: TADD(dstTile, src0Tile, src1Tile)
 ```
 
-**Row Reduce（行规约，需 tmp）：**
+**Row Reduce (row reduction, tmp required):**
 ```cpp
-    // 创建 srcTile, tmpTile, dstTile（均为 rows x cols）
-    {instr}(dstTile, srcTile, tmpTile);  // 如: TROWSUM(dstTile, srcTile, tmpTile)
+    //Create srcTile, tmpTile, dstTile (all rows x cols)
+    {instr}(dstTile, srcTile, tmpTile); // For example: TROWSUM(dstTile, srcTile, tmpTile)
 ```
 
-**Col Reduce（列规约，dst 为 1xcols）：**
+**Col Reduce (column reduction, dst is 1xcols):**
 ```cpp
     using SrcTile = Tile<TileType::Vec, {dtype}, {rows}, {cols}, BLayout::RowMajor, -1, -1>;
     using DstTile = Tile<TileType::Vec, {dtype}, 1, {cols}, BLayout::RowMajor, -1, -1>;
     // tmpTile shape = (rows/2 ? rows/2 : 1, cols)
-    {instr}(dstTile, srcTile, tmpTile, false);  // 如: TCOLSUM(dstTile, srcTile, tmpTile, false)
+    {instr}(dstTile, srcTile, tmpTile, false); // For example: TCOLSUM(dstTile, srcTile, tmpTile, false)
 ```
 
-**TCVT（类型转换）：**
+**TCVT (type conversion):**
 ```cpp
     using DstTile = Tile<TileType::Vec, {dst_dtype}, {rows}, {cols}, BLayout::RowMajor, -1, -1>;
     using SrcTile = Tile<TileType::Vec, {src_dtype}, {rows}, {cols}, BLayout::RowMajor, -1, -1>;
     TCVT(dstTile, srcTile, RoundMode::CAST_NONE);
 ```
 
-**TMATMUL（矩阵乘法）：**
+**TMATMUL (Matrix Multiplication):**
 ```cpp
     constexpr int blockAlign = (sizeof({a_dtype}) == 1) ? 32 : 16;
-    constexpr int M = CeilAlign({m}, blockAlign);  // 同理 N, K
+    constexpr int M = CeilAlign({m}, blockAlign); // Same as N, K
     using LeftTile  = TileLeft<{a_dtype}, M, K, {m}, {k}>;
     using RightTile = TileRight<{b_dtype}, K, N, {k}, {n}>;
     using AccTile   = TileAcc<{out_dtype}, M, N, {m}, {n}>;
     TMATMUL(cTile, aTile, bTile);
 ```
 
-### 编译命令
+### Compilation command
 
-将生成的 `.cpp` 写入临时目录，用以下命令编译：
+Write the generated `.cpp` into the temporary directory and compile it with the following command:
 
 ```bash
 clang++ <src.cpp> -o <exe> -std=c++23 -O2 \
@@ -208,29 +208,29 @@ clang++ <src.cpp> -o <exe> -std=c++23 -O2 \
     -Wno-macro-redefined -Wno-ignored-attributes
 ```
 
-macOS 额外需要：`-isystem$(xcrun --show-sdk-path)/usr/include/c++/v1`
+macOS additionally requires: `-isystem$(xcrun --show-sdk-path)/usr/include/c++/v1`
 
-运行可执行文件，解析 stdout 中的 `[CYCLE]` 行，输出结果。
+Run the executable file, parse the `[CYCLE]` lines in stdout, and output the results.
 
-## 架构参数
+## Architecture parameters
 
-- **目标架构**: A2/A3 Ascend NPU (`__NPU_ARCH__=2201`)
-- **主频**: 1.85 GHz
-- **编译器要求**: clang++ >= 15 或 g++ >= 13，C++23
-- **必须宏**: `-D__COSTMODEL -D__NPU_ARCH__=2201 -DPTO_COMM_NOT_SUPPORTED`
-- **头文件路径**: `-I<repo>/include -I<repo>/include/common`
+- **Target Architecture**: A2/A3 Ascend NPU (`__NPU_ARCH__=2201`)
+- **Main frequency**: 1.85 GHz
+- **Compiler Requirements**: clang++ >= 15 or g++ >= 13, C++23
+- **Required macro**: `-D__COSTMODEL -D__NPU_ARCH__=2201 -DPTO_COMM_NOT_SUPPORTED`
+- **Header file path**: `-I<repo>/include -I<repo>/include/common`
 
-## ST 测试套件
+## ST Test Suite
 
-正式的回归测试位于 `tests/costmodel/st/testcase/`，用于 costmodel 的正确性验证。
+Formal regression tests are located in `tests/costmodel/st/testcase/` and are used to verify the correctness of costmodel.
 
-### 运行方式
+### Operation mode
 
 ```bash
 python3 tests/run_costmodel.py --testcase <name> --build-type Release
-python3 tests/run_costmodel.py --build-type Release  # 运行全部
+python3 tests/run_costmodel.py --build-type Release # Run all
 ```
 
-### 可用测试用例
+### Available test cases
 
 `tabs`, `tadd`, `tadds`, `tcmp`, `tcolmax`, `tcolmin`, `tcolsum`, `tcvt`, `tdiv`, `tdivs`, `texp`, `textract`, `tgather`, `tload`, `tloadconv`, `tmatmul`, `tmax`, `tmaxs`, `tmin`, `tmins`, `tmov`, `tmrgsort`, `tmul`, `tmuls`, `tneg`, `trecip`, `trowexpand`, `trowmax`, `trowmin`, `trowsum`, `trsqrt`, `tscatter`, `tsel`, `tsels`, `tsort32`, `tsqrt`, `tsub`, `tsubs`, `ttrans`

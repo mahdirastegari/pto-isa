@@ -1,4 +1,4 @@
-# 运行产物目录
+# Run the product directory
 
 ```text
 runs/
@@ -11,10 +11,10 @@ runs/
     notes.md
 ```
 
-每轮**必须**保存三个文件，不允许缺失：
+Each round **must** save three files, no missing files are allowed:
 
-- `files.txt`：本轮修改的文件列表（调参类迭代写"环境变量调参，无源文件修改"）
-- `patch.diff`：本轮代码 diff（调参类迭代写参数变更说明，见 `task.md` 中的格式要求）
-- `notes.md`：本轮详细记录（Pre-Edit / Changes / Post-Run / Analysis / Next）
+- `files.txt`: List of files modified in this round (parameter adjustment class iteratively writes "environment variable parameter adjustment, passive file modification")
+- `patch.diff`: this round of code diff (the parameter adjustment class iteratively writes parameter change instructions, see the format requirements in `task.md`)
+- `notes.md`: Detailed records of this round (Pre-Edit/Changes/Post-Run/Analysis/Next)
 
-从 `runs/_template/` 复制后填写。
+Fill in after copying from `runs/_template/`.

@@ -1,52 +1,52 @@
-# 测试环境与运行
+# Test environment and operation
 
-## CPU 仿真测试
+## CPU simulation test
 
-### 适用范围
+### Scope of application
 
-CPU 仿真支持以下同步通信指令的功能验证：
-- TPUT、TGET（P2P 传输）
-- TNOTIFY、TWAIT、TTEST（信号同步）
-- TGATHER、TSCATTER、TBROADCAST、TREDUCE（集合通信）
+CPU simulation supports functional verification of the following synchronous communication instructions:
+- TPUT, TGET (P2P transmission)
+- TNOTIFY, TWAIT, TTEST (signal synchronization)
+- TGATHER, TSCATTER, TBROADCAST, TREDUCE (aggregate communication)
 
-**不支持**：异步指令（TPUT_ASYNC/TGET_ASYNC）在 CPU 仿真下直接返回空 event。
+**Not supported**: Asynchronous instructions (TPUT_ASYNC/TGET_ASYNC) directly return empty events under CPU simulation.
 
-### 运行方式
+### Operation mode
 
 ```bash
 python3 tests/run_cpu.py --testcase <testcase_name> --gtest_filter '<filter>'
 
-# 示例
+# Example
 python3 tests/run_cpu.py --testcase tgather --gtest_filter 'TGatherTest.*'
 ```
 
-### CPU 仿真局限性
+### CPU emulation limitations
 
-| 特性 | CPU 仿真 | NPU 硬件 |
+| Features | CPU Emulation | NPU Hardware |
 |------|---------|---------|
-| 功能正确性 | 验证数据计算逻辑 | 验证完整执行 |
-| 远端地址 | 模拟为本地指针 | 真实硬件远端 DMA |
-| 信号同步 | 模拟 AtomicAdd/Set | 硬件原子操作 |
-| pipe_barrier | 忽略 | 真实流水线同步 |
-| 多 rank | 单进程模拟 | MPI + 多 NPU |
-| 异步 DMA | 返回无效 event | SDMA/URMA 引擎 |
+| Functional correctness | Verify data calculation logic | Verify complete execution |
+| Remote address | Simulated as local pointer | Real hardware remote DMA |
+| Signal synchronization | Simulation AtomicAdd/Set | Hardware atomic operations |
+| pipe_barrier | Ignore | Real pipeline synchronization |
+| Multi-rank | Single-process simulation | MPI + multiple NPU |
+| Asynchronous DMA | Returning invalid event | SDMA/URMA engine |
 
-**建议**：CPU 仿真验证数据流和逻辑正确性，但最终必须在 NPU 硬件上验证同步和性能。
+**Recommendation**: CPU emulation verifies data flow and logic correctness, but ultimately synchronization and performance must be verified on NPU hardware.
 
 ---
 
-## NPU 硬件测试
+## NPU hardware test
 
-### 单指令 ST 测试
+### Single instruction ST test
 
 ```bash
 python3 tests/script/run_st.py -r npu -v a3 -t tput -g TPutTest.*
 
-# 运行所有通信 ST
+# Run all communications ST
 python3 tests/script/run_st.py -r npu -v a3 --comm
 ```
 
-### 算子级测试
+### Operator level test
 
 ```bash
 cd kernels/manual/a2a3/my_operator
@@ -54,11 +54,11 @@ mkdir -p build && cd build
 cmake .. -DSOC_VERSION=Ascend910C -DRUN_MODE=npu
 make -j
 
-# 运行（8 rank）
+# Run (8 ranks)
 mpirun -np 8 ./my_operator
 ```
 
-### 测试 Kernel 结构
+### Test Kernel structure
 
 ```cpp
 template <typename T, int Rows, int Cols>
@@ -84,11 +84,11 @@ __global__ AICORE void TPutTestKernel(__gm__ T *local_data, __gm__ T *remote_add
 
 ---
 
-## 多 Rank 测试框架
+## Multi-Rank testing framework
 
 ### MPI Wrapper
 
-使用动态加载避免硬依赖：
+Use dynamic loading to avoid hard dependencies:
 
 ```cpp
 class MpiWrapper {
@@ -103,7 +103,7 @@ public:
 };
 ```
 
-### 测试运行脚本模板
+### Test run script template
 
 ```bash
 #!/bin/bash
@@ -126,7 +126,7 @@ mpirun -np $NRANKS \
     ./build/my_operator "$@"
 ```
 
-### Rank 0 收集结果
+### Rank 0 Collect results
 
 ```cpp
 if (rank == 0) {

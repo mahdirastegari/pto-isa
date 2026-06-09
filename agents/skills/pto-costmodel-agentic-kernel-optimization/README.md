@@ -1,39 +1,39 @@
 # AKO4PTO
 
-这是一个用于 PTO 算子调优的多项目工作区。
+This is a multi-project workspace for PTO operator tuning.
 
-目标：
+Goal:
 
-- 不污染原始 `pto-kernels` 目录
-- 不同算子使用独立项目目录
-- 在各自项目的隔离副本中修改代码
-- 通过远程 Ascend 环境做 benchmark 验证
-- 对每一轮调优保留完整记录
+- Do not pollute the original `pto-kernels` directory
+- Different operators use independent project directories
+- Modify code in isolated copies of respective projects
+- Perform benchmark verification through remote Ascend environment
+- Keep complete records of each round of tuning
 
-## 建议阅读顺序
+## Suggested reading order
 
 1. `README.md`
 2. `task.md`
 3. `remote.md`
 4. `project_template/`
 
-## 目录说明
+## Directory description
 
-- `projects/`：每个算子一个独立项目目录
-- `project_template/`：新建算子项目时使用的模板
-- `task.md`：所有项目共用的任务流程
-- `remote.md`：共享的远程登录、同步、执行 benchmark 流程
-- `context/`：可选的共享参考资料
+- `projects/`: an independent project directory for each operator
+- `project_template/`: template used when creating a new operator project
+- `task.md`: task process common to all projects
+- `remote.md`: Shared remote login, synchronization, and benchmark execution processes
+- `context/`: optional shared reference material
 
-## 最小使用流程
+## Minimum usage process
 
-1. 为当前算子在 `projects/` 下创建一个独立项目目录。
-2. 从 `project_template/` 复制 `TASK_REQUIREMENTS.md`、`ITERATIONS.md`、`workspace/`、`runs/`、`context/`。
-3. 在该项目目录下将原始 `pto-kernels` 复制到 `projects/<operator_name>/workspace/pto-kernels`。
-4. 具体执行统一按顶层 `task.md`，远程连接和环境配置按 `remote.md`。
-5. 在该项目自己的 `projects/<operator_name>/workspace/pto-kernels` 中修改代码。
-6. 每轮结束后，把记录写入该项目自己的 `runs/iter-XXX/`，并同步更新该项目自己的 `ITERATIONS.md`。
+1. Create an independent project directory under `projects/` for the current operator.
+2. Copy `TASK_REQUIREMENTS.md`, `ITERATIONS.md`, `workspace/`, `runs/`, `context/` from `project_template/`.
+3. Copy the original `pto-kernels` to `projects/<operator_name>/workspace/pto-kernels` in the project directory.
+4. For specific execution, please press the top-level `task.md`, and for remote connection and environment configuration, please press `remote.md`.
+5. Modify the code in the project's own `projects/<operator_name>/workspace/pto-kernels`.
+6. After each round, write the record to the project's own `runs/iter-XXX/`, and update the project's own `ITERATIONS.md` synchronously.
 
-## 使用 Agent 自动寻优
+## Use Agent to automatically search for optimization
 
-如果使用 agent 自动执行调优，用户进入 `AKO4PTO` 根目录后，应直接让 agent 按顶层 `task.md` 行事。
+If an agent is used to automatically perform tuning, after entering the `AKO4PTO` root directory, the user should directly ask the agent to act according to the top-level `task.md`.

@@ -1,12 +1,12 @@
-# 高级调试工具
+# Advanced debugging tools
 
-## mssanitizer 内存检测
+## mssanitizer memory detection
 
-`mssanitizer` 是昇腾平台的内存安全检测工具，可检测通信算子中的内存越界、未对齐访问等问题。
+`mssanitizer` is the memory security detection tool of the Ascend platform, which can detect memory out-of-bounds, unaligned access and other issues in communication operators.
 
-### 编译集成
+### Compile integration
 
-在 CMakeLists.txt 中添加 sanitizer 编译选项：
+Add sanitizer compilation option to CMakeLists.txt:
 
 ```cmake
 option(ENABLE_SANITIZER "Enable mssanitizer for memory checking" OFF)
@@ -19,27 +19,27 @@ if(ENABLE_SANITIZER)
 endif()
 ```
 
-### 使用方式
+### How to use
 
 ```bash
-# 编译带 sanitizer 的版本
+# Compile the version with sanitizer
 cmake .. -DENABLE_SANITIZER=ON
 make -j
 
-# 运行（mssanitizer 自动检测）
+# Run (mssanitizer automatically detects)
 mssanitizer --tool=memcheck mpirun -np 8 ./my_operator
 ```
 
-### 可检测问题
+### Detectable issues
 
-| 问题类型 | 说明 | 通信算子中的典型场景 |
+| Problem type | Description | Typical scenarios in communication operators |
 |---------|------|---------------------|
-| GM 越界读 | 读取超出分配范围的 GM 地址 | Tile 分块时边界计算错误 |
-| GM 越界写 | 写入超出分配范围的 GM 地址 | 远端地址偏移计算溢出 |
-| UB 越界 | 访问超出 UB 容量 | Tile 大小设置过大 |
-| 未对齐访问 | 未满足对齐要求 | Signal 地址非 4B 对齐 |
+| GM out-of-bounds read | Reading a GM address beyond the allocated range | Boundary calculation error when Tile is divided |
+| GM out-of-bounds write | Writing a GM address beyond the allocated range | Remote address offset calculation overflow |
+| UB out of bounds | Access exceeds UB capacity | Tile size set too large |
+| Unaligned access | Alignment requirements not met | Signal address not 4B aligned |
 
-### 输出解读
+### Output interpretation
 
 ```
 [mssanitizer] ERROR: out-of-bounds access at GM address 0x12345678
@@ -48,27 +48,27 @@ mssanitizer --tool=memcheck mpirun -np 8 ./my_operator
   accessed offset: 65540 (4 bytes beyond allocation)
 ```
 
-重点关注：
-- `out-of-bounds`：检查 Tile 边界和远端地址计算
-- `use-after-free`：检查 buffer 生命周期
-- `uninitialized`：检查信号矩阵是否清零
+Focus on:
+- `out-of-bounds`: Check Tile boundaries and remote address calculation
+- `use-after-free`: Check buffer life cycle
+- `uninitialized`: Check whether the signal matrix is cleared
 
 ---
 
-## 环境变量调试
+## Environment variable debugging
 
 ```bash
-# HCCL 调试
-export HCCL_LOG_LEVEL=DEBUG      # HCCL 日志级别
-export HCCL_BUFFSIZE=1024        # 通信缓冲区大小（MB）
+# HCCL Debugging
+export HCCL_LOG_LEVEL=DEBUG # HCCL log level
+export HCCL_BUFFSIZE=1024 # Communication buffer size (MB)
 
-# ACL 错误码检查
-export ACL_ERROR_ABORT=1         # 遇到 ACL 错误立即 abort
+# ACL error code check
+export ACL_ERROR_ABORT=1 # Abort immediately when encountering ACL errors
 ```
 
 ---
 
-## 缩小问题规模
+## Reduce the size of the problem
 
 ```cpp
 #define DEBUG_MODE
@@ -82,7 +82,7 @@ static constexpr int COMM_BLOCK_NUM = 2;
 
 ---
 
-## Host 侧性能计时
+## Host side performance timing
 
 ```cpp
 aclrtEvent startEvent, endEvent;
@@ -101,17 +101,17 @@ printf("Kernel time: %.3f ms\n", elapsed_ms);
 
 ---
 
-## Warmup + 多次测量
+## Warmup + multiple measurements
 
 ```cpp
-// Warmup（排除首次开销）
+// Warmup (excluding first overhead)
 for (int i = 0; i < WARMUP_ITERS; i++) {
     ClearSignals();
     LaunchKernel(...);
     aclrtSynchronizeStream(stream);
 }
 
-// 正式测量
+// formal measurement
 float total_ms = 0;
 for (int i = 0; i < MEASURE_ITERS; i++) {
     ClearSignals();
@@ -128,16 +128,16 @@ printf("Average: %.3f ms\n", total_ms / MEASURE_ITERS);
 
 ---
 
-## msprof 硬件 Profiling
+## msprof Hardware Profiling
 
-对于 Device 侧管道级分析：
+For Device-side pipeline-level analysis:
 
 ```bash
-# 采集 kernel 执行 timeline
+# Collect kernel execution timeline
 msprof --output=./prof_data --application="mpirun -np 8 ./my_operator"
 
-# 导出分析结果
+# Export analysis results
 msprof --export=timeline --output=./prof_data
 ```
 
-可展示 MTE2/MTE3/Cube/Vec 管道占用率，定位通信/计算重叠空洞。
+Can display MTE2/MTE3/Cube/Vec pipeline occupancy rate and locate communication/computing overlap holes.
