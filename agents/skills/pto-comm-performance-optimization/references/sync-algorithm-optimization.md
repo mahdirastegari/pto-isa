@@ -1,58 +1,58 @@
-# 同步与算法优化
+# Synchronization and algorithm optimization
 
-## 同步开销优化
+## Synchronization overhead optimization
 
-### Barrier 合并
+### Barrier merge
 
-将多个 phase barrier 合并为一个：
+Combine multiple phase barriers into one:
 
 ```
-优化前：[RS] → [Barrier] → [local reduce] → [Barrier] → [AG]
-优化后：[RS with AtomicAdd] → [Barrier] → [AG]
+Before optimization: [RS] → [Barrier] → [local reduce] → [Barrier] → [AG]
+After optimization: [RS with AtomicAdd] → [Barrier] → [AG]
          ^^^^^^^^^^^^^^^^^^^^^
-         RS 和 Reduce 融合为 TPUT<AtomicAdd>
+         RS and Reduce are merged into TPUT<AtomicAdd>
 ```
 
-通过使用 `AtomicAdd` 在 RS 阶段直接累加，消除了独立的 Reduce 阶段及其 barrier。
+By directly accumulating in the RS stage using `AtomicAdd`, a separate Reduce stage and its barrier are eliminated.
 
-### 信号压缩
+### Signal compression
 
-减少跨 rank 通知次数：
+Reduce the number of cross-rank notifications:
 
 ```
-优化前：每个 tile 完成都通知远端 → N_tiles × nranks 次 TNOTIFY
-优化后：所有 tile 完成后通知一次 → nranks 次 TNOTIFY
+Before optimization: Notify the remote end of each tile completion → N_tiles × nranks times TNOTIFY
+After optimization: Notify once when all tiles are completed → nranks times TNOTIFY
 ```
 
-### Block 角色优化
+### Block role optimization
 
-只让 block 0 执行跨 rank 信号，其他 block 等待本地广播标志：
+Only let block 0 execute cross-rank signals, and other blocks wait for local broadcast flags:
 
 ```
 Block 0: TNOTIFY(remote) × (nranks-1) → TWAIT(local) × (nranks-1) → Set local flag
-Block 1~N: TWAIT(local flag)  ← 一次 TWAIT 而非 nranks 次
+Block 1~N: TWAIT(local flag) ← TWAIT once instead of nranks times
 ```
 
-### TTEST vs TWAIT 选择
+### TTEST vs TWAIT Choice
 
-| 场景 | 推荐 | 原因 |
+| Scenario | Recommendation | Reason |
 |------|------|------|
-| 确定必须等待（barrier） | TWAIT | 硬件自旋，更节能 |
-| 轮询+做其他工作 | TTEST | 可交错执行 |
-| 就绪队列消费 | TTEST | 先检查再处理 |
+| Determined to wait (barrier) | TWAIT | Hardware spin, more energy-saving |
+| Poll + do other work | TTEST | Interleaved execution |
+| Ready queue consumption | TTEST | Check first and then process |
 
-### 减少 dcci 调用
+### Reduce dcci calls
 
-`dcci` 刷新缓存行是标量操作，频繁调用影响性能：
+`dcci` Refreshing cache lines is a scalar operation, and frequent calls affect performance:
 
 ```cpp
-// 优化前：每次读队列数据都 dcci
+// Before optimization: dcci is used every time the queue data is read
 for (int i = 0; i < count; i++) {
     dcci(&queue->data[i], SINGLE_CACHE_LINE);
     process(queue->data[i]);
 }
 
-// 优化后：使用 TTEST 硬件指令代替 dcci + 软件比较
+// After optimization: use TTEST hardware instruction instead of dcci + software comparison
 comm::Signal sig(&queue->count);
 if (comm::TTEST(sig, expected, comm::WaitCmp::GE)) {
     dcci(&queue->data[head], SINGLE_CACHE_LINE);
@@ -62,35 +62,35 @@ if (comm::TTEST(sig, expected, comm::WaitCmp::GE)) {
 
 ---
 
-## 算法选择
+## Algorithm selection
 
-### AllReduce 分解策略
+### AllReduce decomposition strategy
 
-| 策略 | 通信量 | 延迟 | 适用场景 |
+| Strategy | Traffic volume | Delay | Applicable scenarios |
 |------|--------|------|---------|
-| ReduceScatter + AllGather | 2(N-1)/N × S | 2(N-1) steps | 中大数据量 |
-| Ring AllReduce | 2(N-1)/N × S | 2(N-1) steps | 大数据量，带宽受限 |
-| 内置 TREDUCE + TBROADCAST | N × S | 2 steps | 小数据量，root 带宽足够 |
-| TPUT\<AtomicAdd\> RS + TPUT AG | 2(N-1)/N × S | 可重叠 | 通算融合场景 |
+| ReduceScatter + AllGather | 2(N-1)/N × S | 2(N-1) steps | Medium to large data volume |
+| Ring AllReduce | 2(N-1)/N × S | 2(N-1) steps | Large data volume, limited bandwidth |
+| Built-in TREDUCE + TBROADCAST | N × S | 2 steps | Small data volume, sufficient root bandwidth |
+| TPUT\<AtomicAdd\> RS + TPUT AG | 2(N-1)/N × S | Overlapping possible | Computational fusion scenario |
 
-其中 S = 数据总大小，N = rank 数。
+Where S = total size of data, N = number of ranks.
 
-### RS 实现：AtomicAdd vs 独立 Reduce
+### RS implementation: AtomicAdd vs standalone Reduce
 
-**AtomicAdd 方式**（推荐用于融合）：
-- RS 阶段使用 `TPUT<AtomicAdd>` 直接累加到 owner
-- 无需独立 Reduce 阶段和额外 barrier
-- FP16 下有累积精度损失
+**AtomicAdd method** (recommended for fusion):
+- The RS phase uses `TPUT<AtomicAdd>` to directly accumulate to owner
+- No need for independent Reduce stage and extra barrier
+- There is a cumulative accuracy loss under FP16
 
-**独立 Reduce 方式**：
-- RS 只做 scatter（无归约）
-- owner 本地执行 TLOAD + TADD + TSTORE 归约
-- 精度更好，但需要额外阶段和 barrier
+**Independent Reduce method**:
+- RS only does scatter (no reduction)
+- owner executes TLOAD + TADD + TSTORE reduction locally
+- Better accuracy, but requires extra stages and barriers
 
-### AG 实现
+### AG implementation
 
-- **TPUT 直写**：owner rank 主动写到所有远端（推荐）
-- **TGET 拉取**：各 rank 从 owner 拉取
-- **TBROADCAST**：owner 使用内置集合通信广播
+- **TPUT direct write**: owner rank actively writes to all remote ends (recommended)
+- **TGET pull**: Each rank is pulled from owner
+- **TBROADCAST**: owner uses built-in collective communication broadcast
 
-通常选择 **TPUT 直写**，因为 owner 知道数据就绪时机，无需额外通知。
+Usually choose **TPUT direct write** because the owner knows when the data is ready without additional notification.

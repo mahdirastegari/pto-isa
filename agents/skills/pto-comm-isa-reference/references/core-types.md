@@ -1,8 +1,8 @@
-# 核心类型详解
+# Detailed explanation of core types
 
-## Signal — 标量信号
+## Signal — scalar signal
 
-用于单标志同步，封装 `int32_t` 类型的 GM 地址：
+Used for single flag synchronization, encapsulating the GM address of type `int32_t`:
 
 ```cpp
 using Signal = GlobalTensor<int32_t, Shape<1,1,1,1,1>, Stride<1,1,1,1,1>, Layout::ND>;
@@ -10,96 +10,96 @@ using Signal = GlobalTensor<int32_t, Shape<1,1,1,1,1>, Stride<1,1,1,1,1>, Layout
 comm::Signal sig(ptr);  // ptr: __gm__ int32_t*
 ```
 
-## Signal2D — 二维信号矩阵
+## Signal2D — two-dimensional signal matrix
 
-编译期形状的二维信号网格，支持密集布局和子区域视图：
+Compile-time shaped 2D signal grid, supporting dense layout and sub-region views:
 
 ```cpp
-// 密集 4×8 网格（步长自动推导为 8）
+//Dense 4×8 grid (step size automatically derived to 8)
 comm::Signal2D<4, 8> grid(ptr);
 
-// 从 128 列大网格中的子区域（步长 = 128）
+// From subregions in a large 128-column grid (step = 128)
 comm::Signal2D<4, 8> sub(ptr + offset, 128);
 ```
 
-## ParallelGroup — 集合通信分组
+## ParallelGroup — Collection communication group
 
-轻量级视图，封装多 rank 的 `GlobalTensor` 对象数组：
+A lightweight view that encapsulates a multi-rank `GlobalTensor` object array:
 
 ```cpp
 template <typename GlobalData>
 struct ParallelGroup {
-    GlobalData *tensors;   // 每个 rank 的 GlobalTensor 数组
-    int nranks;            // rank 总数
-    int rootIdx;           // root NPU 的 rank 索引
+    GlobalData *tensors; // GlobalTensor array for each rank
+    int nranks; //Total number of ranks
+    int rootIdx; //rank index of root NPU
 
     static ParallelGroup Create(GlobalData *tensorArray, int size, int rootIdx);
 };
 ```
 
-**关键约束**：
-- `tensors` 指向外部数组（不做动态内存分配）
-- `rootIdx` 是 root rank 在组中的索引，所有 rank 必须传入相同的 `rootIdx`
-- 通过 `operator[]` 按 team rank 索引访问
+**Key Constraints**:
+- `tensors` points to an external array (no dynamic memory allocation)
+- `rootIdx` is the index of root rank in the group, all ranks must pass in the same `rootIdx`
+- Access by team rank index via `operator[]`
 
-## NotifyOp — 通知操作类型
+## NotifyOp — notification operation type
 
-| 值 | 说明 |
+| value | description |
 |----|------|
-| `NotifyOp::AtomicAdd` | 原子加（`signal += value`） |
-| `NotifyOp::Set` | 直接赋值（`signal = value`） |
+| `NotifyOp::AtomicAdd` | Atomic addition (`signal += value`) |
+| `NotifyOp::Set` | Direct assignment (`signal = value`) |
 
-## WaitCmp — 比较运算符
+## WaitCmp — comparison operator
 
-| 值 | 说明 |
+| value | description |
 |----|------|
-| `WaitCmp::EQ` | 等于 (`==`) |
-| `WaitCmp::NE` | 不等于 (`!=`) |
-| `WaitCmp::GT` | 大于 (`>`) |
-| `WaitCmp::GE` | 大于等于 (`>=`) |
-| `WaitCmp::LT` | 小于 (`<`) |
-| `WaitCmp::LE` | 小于等于 (`<=`) |
+| `WaitCmp::EQ` | Equals (`==`) |
+| `WaitCmp::NE` | Not equal to (`!=`) |
+| `WaitCmp::GT` | Greater than (`>`) |
+| `WaitCmp::GE` | Greater than or equal to (`>=`) |
+| `WaitCmp::LT` | Less than (`<`) |
+| `WaitCmp::LE` | Less than or equal to (`<=`) |
 
-## ReduceOp — 归约运算符
+## ReduceOp — reduction operator
 
-| 值 | 说明 |
+| value | description |
 |----|------|
-| `ReduceOp::Sum` | 逐元素求和 |
-| `ReduceOp::Max` | 逐元素取最大值 |
-| `ReduceOp::Min` | 逐元素取最小值 |
+| `ReduceOp::Sum` | Element-wise summation |
+| `ReduceOp::Max` | Get the maximum value element by element |
+| `ReduceOp::Min` | Get the minimum value element by element |
 
-## AtomicType — 原子操作类型
+## AtomicType — Atomic operation type
 
-定义于 `include/pto/common/constants.hpp`：
+Defined in `include/pto/common/constants.hpp`:
 
-| 值 | 说明 |
+| value | description |
 |----|------|
-| `AtomicType::AtomicNone` | 无原子操作（默认） |
-| `AtomicType::AtomicAdd` | 原子加操作 |
+| `AtomicType::AtomicNone` | No atomic operations (default) |
+| `AtomicType::AtomicAdd` | Atomic addition operation |
 
-## DmaEngine — DMA 引擎选择
+## DmaEngine — DMA engine selection
 
-| 值 | 说明 |
+| value | description |
 |----|------|
-| `DmaEngine::SDMA` | SDMA 引擎，支持二维传输 |
-| `DmaEngine::URMA` | URMA 引擎，支持一维传输（仅 Ascend950 / NPU_ARCH 3510） |
+| `DmaEngine::SDMA` | SDMA engine, supports two-dimensional transmission |
+| `DmaEngine::URMA` | URMA engine, supports one-dimensional transmission (Ascend950 / NPU_ARCH 3510 only) |
 
-## AsyncEvent — 异步事件句柄
+## AsyncEvent — Asynchronous event handler
 
 ```cpp
 struct AsyncEvent {
     uint64_t handle;
     DmaEngine engine;
 
-    bool valid() const;                           // handle != 0 时返回 true
-    bool Wait(const AsyncSession &session) const; // 阻塞直到传输完成
-    bool Test(const AsyncSession &session) const; // 非阻塞完成检测
+    bool valid() const; // return true when handle != 0
+    bool Wait(const AsyncSession &session) const; // Block until transfer is completed
+    bool Test(const AsyncSession &session) const; // Non-blocking completion detection
 };
 ```
 
-## AsyncSession — 异步会话
+## AsyncSession — Asynchronous session
 
-引擎无关的会话对象，通过 `BuildAsyncSession<engine>()` 构建：
+Engine-independent session object, built through `BuildAsyncSession<engine>()`:
 
 ```cpp
 struct AsyncSession {

@@ -1,21 +1,21 @@
 # Task Requirements
 
-这里写当前任务的附加要求。
+Write here additional requirements for the current task.
 
-可以写的内容例如：
+Examples of content you can write include:
 
-- 指定默认测试 shape，例如 `BNSD=1,16,8192,512`
-- 指定必须优先优化的输入规模
-- 指定不允许修改的文件或模块
-- 指定必须保留的行为约束
-- 指定本次任务特别关注的性能指标
+- Specify the default test shape, for example `BNSD=1,16,8192,512`
+- Specify the input size that must be prioritized for optimization
+- Specify files or modules that are not allowed to be modified
+- Specify behavioral constraints that must be preserved
+- Specify the performance indicators of special concern for this task
 
-示例：
+Example:
 
 ```text
-- 把默认的 size 改成 BNSD=1,16,8192,512
-- 优先关注 torch_npu baseline 对比
-- 不要改动与 flash_attention_score 无关的算子
+- Change the default size to BNSD=1,16,8192,512
+- Prioritize torch_npu baseline comparison
+- Do not change operators unrelated to flash_attention_score
 ```
 
 ## Hints

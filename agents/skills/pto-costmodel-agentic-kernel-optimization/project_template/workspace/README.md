@@ -1,22 +1,22 @@
-# 工作区说明
+# Workspace description
 
-`workspace/` 用于存放当前算子项目实际修改的 PTO 代码副本。
+`workspace/` is used to store a copy of the PTO code actually modified by the current operator project.
 
-原则：
+Principles:
 
-- 只在这里修改代码
-- 不直接修改原始 `pto-kernels` 目录
-- 一个项目只服务于一个算子
+- Only modify the code here
+- Do not directly modify the original `pto-kernels` directory
+- A project only serves one operator
 
-## 初始化方式
+## Initialization method
 
-将原始代码复制到：
+Copy the original code to:
 
 ```bash
 workspace/pto-kernels
 ```
 
-示例：
+Example:
 
 ```bash
 cp -R <original_pto_kernels_path> ./workspace/pto-kernels

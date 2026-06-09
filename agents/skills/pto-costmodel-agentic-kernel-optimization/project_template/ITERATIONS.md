@@ -1,7 +1,7 @@
-# 迭代记录
+# Iteration records
 
-<!-- 每轮追加一行。这是给用户看的简约摘要，详细分析放在 runs/iter-XXX/notes.md。 -->
-<!-- Hypothesis 列写假设，Changes 列写本轮具体改了什么（参数旧值→新值 或 代码修改概要）。 -->
+<!-- Append one line each round. This is a concise summary for users, and detailed analysis is placed in runs/iter-XXX/notes.md. -->
+<!-- Hypothesis lists the hypotheses, and Changes lists the specific changes in this round (old value of parameter → new value or summary of code modification). -->
 
 | Iter | Hypothesis | Changes | Baseline | PTO | Correct | Result |
 |------|-----------|---------|----------|-----|---------|--------|

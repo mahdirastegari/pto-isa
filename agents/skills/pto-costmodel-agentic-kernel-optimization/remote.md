@@ -1,69 +1,69 @@
 ---
 name: ako4pto-remote-bringup
-description: 用于 AKO4PTO 的远程 Ascend 环境 bring-up。覆盖 SSH 连通、工作区上传、Python 选择、依赖安装、环境自检及 benchmark 验证。
+description: Remote Ascend environment bring-up for AKO4PTO. Covers SSH connection, workspace upload, Python selection, dependency installation, environment self-test and benchmark verification.
 ---
 
-# AKO4PTO 远程环境 Bring-Up
+# AKO4PTO Remote Environment Bring-Up
 
-## 概述
+## Overview
 
-把远程 Ascend 机器带到"可以稳定运行目标 PTO benchmark"的状态。覆盖两种情况：已有环境的快速复用、空环境的从零 bring-up。
+Bring the remote Ascend machine to a state where it can stably run the target PTO benchmark. Covers two situations: rapid reuse of existing environments and bring-up of empty environments from scratch.
 
-本文档只负责远程环境准备和排障，调优流程和迭代协议以 `task.md` 为准。
+This document is only responsible for remote environment preparation and troubleshooting. The tuning process and iteration protocol are subject to `task.md`.
 
 > [!NOTE]
-> `<user>`、`<remote_ip>`、`<path_to>` 由用户在每次会话开始时提供，不要硬编码。
+> `<user>`, `<remote_ip>`, `<path_to>` are provided by the user at the beginning of each session, do not hardcode.
 
-## 工作流
+## Workflow
 
-### 1. 确认 SSH
+### 1. Confirm SSH
 
 ```bash
 ssh -o BatchMode=yes <user>@<remote_ip> "echo ssh_key_ok"
 ```
 
-### 2. 本地准备工作区
+### 2. Local preparation workspace
 
-向用户确认 `pto-kernels` 本地路径后，**先在本地**确保 `external/src/` 下的四个依赖库齐全：
+After confirming the local path of `pto-kernels` with the user, **first make sure locally** that the four dependent libraries under `external/src/` are complete:
 
 ```bash
-cd <pto-kernels路径>
+cd <pto-kernels path>
 ls external/src/pto-dsl external/src/PTOAS external/src/pto-isa external/src/ops-transformer
 ```
 
-缺失则在本地补全：
+If missing, it will be completed locally:
 
 ```bash
 bash scripts/bootstrap_workspace.sh
 ```
 
-这样后续上传时 `external/src/` 会一并传到远程，避免远程 git clone 受网络影响。
+In this way, `external/src/` will be transferred to the remote during subsequent uploads to avoid remote git clone being affected by the network.
 
-### 3. 上传工作区
+### 3. Upload workspace
 
-远程目录结构与本地保持一致。上传命令（优先 scp，备选 rsync）：
+The remote directory structure remains consistent with the local one. Upload command (scp is preferred, rsync is optional):
 
 ```bash
-# 首选
+# preferred
 scp -r projects/<operator_name>/workspace/pto-kernels <user>@<remote_ip>:<path_to>/AKO4PTO/projects/<operator_name>/workspace/
 
-# 备选（增量同步）
+# Alternative (incremental synchronization)
 rsync -avz projects/<operator_name>/workspace/pto-kernels/ <user>@<remote_ip>:<path_to>/AKO4PTO/projects/<operator_name>/workspace/pto-kernels/
 ```
 
-### 4. 识别远程 Python
+### 4. Identify remote Python
 
 ```bash
 which python3 && python3 --version
 ```
 
-- 不要假设系统 `python3` 满足 PTO 依赖，不要替换系统 Python
-- 如果远程默认是 `Python 3.9`，优先使用用户态 `Python 3.11`（如 `~/.local/miniforge3/envs/pto-py311/bin/python`）
-- 一旦选定解释器，后续所有操作都固定使用，不和系统 Python 混用
+- Do not assume that system `python3` satisfies PTO dependencies and do not replace system Python
+- If the remote default is `Python 3.9`, user mode `Python 3.11` is preferred (such as `~/.local/miniforge3/envs/pto-py311/bin/python`)
+- Once an interpreter is selected, it will be used for all subsequent operations and will not be mixed with system Python.
 
-### 5. 快速复用（已有环境）
+### 5. Quick reuse (existing environment)
 
-如果远程环境大概率已搭好，先做最小校验，不要急着安装任何东西：
+If the remote environment is most likely already set up, do the minimum verification first and don’t rush to install anything:
 
 ```bash
 cd <path_to>/AKO4PTO/projects/<operator_name>/workspace/pto-kernels
@@ -75,22 +75,22 @@ ptoas --version
 <python_exec> -m pto_kernels.bench.runner <target_spec>
 ```
 
-全部通过 → 复用成功，直接进入调优。任一步失败 → 进入下面的完整 bring-up（步骤 6 起）。
+All passed → reuse successfully, go directly to tuning. Any step fails → proceed to full bring-up below (step 6 onwards).
 
-### 6. 确认远程依赖源码
+### 6. Confirm remote dependency source code
 
-步骤 2 已在本地确保 `external/src/` 齐全。上传后在远程确认：
+Step 2 Ensure that `external/src/` is complete locally. Confirm remotely after uploading:
 
 ```bash
 ls external/src/pto-dsl external/src/PTOAS external/src/pto-isa external/src/ops-transformer
 ```
 
-缺失则在远程执行 `bash scripts/bootstrap_workspace.sh`。
+If it is missing, `bash scripts/bootstrap_workspace.sh` will be executed remotely.
 
 > [!NOTE]
-> `bootstrap_workspace.sh` 需要远程能访问 GitHub / GitCode。超过 10 秒无响应 → 在本地补全后重新 scp 上传 `external/src/`。
+> `bootstrap_workspace.sh` requires remote access to GitHub / GitCode. No response for more than 10 seconds → scp upload `external/src/` again after local completion.
 
-### 7. 安装 Python 依赖
+### 7. Install Python dependencies
 
 ```bash
 <python_pip> install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
@@ -99,14 +99,14 @@ ls external/src/pto-dsl external/src/PTOAS external/src/pto-isa external/src/ops
 ```
 
 > [!IMPORTANT]
-> **10 秒超时规则**：远程 `pip install` 或任何下载命令超过 **10 秒无响应**，立即 Ctrl-C，切换为本地下载 + scp 上传：
+> **10 seconds timeout rule**: If remote `pip install` or any download command exceeds **10 seconds without response**, immediately Ctrl-C, switch to local download + scp upload:
 > ```bash
 > pip download -i https://pypi.tuna.tsinghua.edu.cn/simple <package> -d /tmp/wheels/
 > scp -r /tmp/wheels/ <user>@<remote_ip>:<path_to>/wheels/
 > <python_pip> install --no-index --find-links <path_to>/wheels/ <package>
 > ```
 
-### 8. 加载环境 + 检查 ptoas/mlir
+### 8. Load environment + check ptoas/mlir
 
 ```bash
 bash scripts/source_env.sh
@@ -114,37 +114,37 @@ ptoas --version
 <python_exec> -c "import mlir.ir; from mlir.dialects import pto; print('mlir_ok')"
 ```
 
-如果失败，通常需要手动补环境变量：
+If it fails, you usually need to manually fill in the environment variables:
 
 ```bash
 export PATH=<py311_bin>:<ptoas_cli_bin>:$PATH
 export LD_LIBRARY_PATH=<py311_lib>:<mlir__mlir_libs>:<ptoas_cli_lib>:/usr/local/Ascend/cann-*/aarch64-linux/lib64:$LD_LIBRARY_PATH
 ```
 
-注意：`mlir/_mlir_libs` 和 `ptoas` CLI 的 `lib` 目录往往都必须放进 `LD_LIBRARY_PATH`。
+Note: The `lib` directories of `mlir/_mlir_libs` and `ptoas` CLI must always be placed in `LD_LIBRARY_PATH`.
 
-### 9. 环境自检 + benchmark 验证
+### 9. Environment self-test + benchmark verification
 
-执行与步骤 5 相同的完整校验序列（`check_env.py --strict` → mlir → torch_npu → ptoas → bisheng），然后跑一次目标 benchmark：
+Execute the same complete verification sequence as step 5 (`check_env.py --strict` → mlir → torch_npu → ptoas → bisheng), and then run the target benchmark:
 
 ```bash
 <python_exec> -m pto_kernels.bench.runner <target_spec>
 ```
 
-环境是否可用，以 `task.md` 里的 gate 为准。
+Whether the environment is available depends on the gate in `task.md`.
 
-## 排障
+## Troubleshooting
 
-- **SSH 要密码**：检查本地私钥、远程 `authorized_keys`、登录用户名。
+- **SSH password required**: Check local private key, remote `authorized_keys`, login username.
 
-- **已有环境跑不通**：先确认仓库路径、Python 路径、`source_env.sh` 是否成功、`check_env.py --strict`。只有确认不可修复时才转入完整 bring-up。
+- **Existing environment cannot be run**: First confirm the warehouse path, Python path, whether `source_env.sh` is successful, and `check_env.py --strict`. Only move to a full bring-up when it is confirmed that it is irreparable.
 
-- **`torch_npu` 导入失败**：检查 Ascend 环境是否已加载、Python 路径是否正确、`torch_npu` 是否装到了正确的解释器。
+- **`torch_npu` import failed**: Check whether the Ascend environment is loaded, whether the Python path is correct, and whether `torch_npu` is installed with the correct interpreter.
 
-- **`torch.npu.is_available()` 为 False**：检查 `LD_LIBRARY_PATH` 是否包含 CANN `aarch64-linux/lib64`，`source_env.sh` 是否提前退出。
+- **`torch.npu.is_available()` is False**: Check whether `LD_LIBRARY_PATH` contains CANN `aarch64-linux/lib64` and whether `source_env.sh` exits early.
 
-- **`import mlir.ir` 失败**：检查 `ptoas` wheel 是否装到了当前解释器，`LD_LIBRARY_PATH` 是否包含 `mlir/_mlir_libs`。
+- **`import mlir.ir` failed**: Check whether the `ptoas` wheel is installed in the current interpreter and whether `LD_LIBRARY_PATH` contains `mlir/_mlir_libs`.
 
-- **`ptoas --version` 通过但编译失败**：检查 `PATH` 和 `LD_LIBRARY_PATH` 是否包含 ptoas CLI 的 bin/lib。
+- **`ptoas --version` passes but compilation fails**: Check `PATH` and `LD_LIBRARY_PATH` to see if the ptoas CLI's bin/lib is included.
 
-- **远程下载超过 10 秒无响应**：不要重试。本地 `pip download` → scp 上传 → 远程 `pip install --no-index --find-links` 离线安装。
+- **Remote download unresponsive for more than 10 seconds**: Do not retry. Local `pip download` → scp upload → remote `pip install --no-index --find-links` offline installation.

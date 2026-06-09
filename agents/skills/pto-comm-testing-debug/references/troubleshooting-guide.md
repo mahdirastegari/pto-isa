@@ -1,19 +1,19 @@
-# 问题诊断手册
+# Problem Diagnosis Manual
 
-## 1. 死锁（程序挂起）
+## 1. Deadlock (program hangs)
 
-**症状**：程序无响应，`mpirun` 超时。
+**Symptoms**: Program unresponsive, `mpirun` times out.
 
-### 排查步骤
+### Troubleshooting steps
 
-| 检查项 | 方法 | 典型原因 |
+| Check items | Methods | Typical causes |
 |--------|------|---------|
-| TWAIT 未匹配 TNOTIFY | 检查每个 TWAIT 是否有对应的 TNOTIFY 发送 | 漏发通知或发送方向错误 |
-| Barrier 不对称 | 确认所有 rank 都执行 barrier | 部分 rank 跳过 barrier 路径 |
-| Signal 地址错误 | 打印 signal 地址确认远端/本地正确 | 远端地址计算错误 |
-| Block 数不匹配 | 确认 intra-rank 计数器期望值 | `num_comm_blocks - 1` 与实际不符 |
+| TWAIT does not match TNOTIFY | Check whether each TWAIT has a corresponding TNOTIFY to send | Missing notification or sending in the wrong direction |
+| Barrier asymmetry | Confirm that all ranks execute barrier | Some ranks skip barrier paths |
+| Signal address error | Print signal address to confirm that the remote/local address is correct | Remote address calculation error |
+| Block number does not match | Confirm intra-rank counter expected value | `num_comm_blocks - 1` does not match actual value |
 
-### 超时保护模式
+### Timeout protection mode
 
 ```cpp
 int timeout = 1000000;
@@ -22,31 +22,31 @@ while (timeout-- > 0) {
 }
 if (timeout <= 0) {
     dcci((__gm__ void *)signal_ptr, SINGLE_CACHE_LINE);
-    // 记录异常
+    //Log exception
 }
 ```
 
 ---
 
-## 2. 数据错误
+## 2. Data error
 
-| 现象 | 可能原因 | 解决方法 |
+| Phenomenon | Possible causes | Solutions |
 |------|---------|---------|
-| 全零 | 传输未执行 / 地址错误 | 检查远端地址计算和 kernel 是否启动 |
-| 随机值 | 读到未初始化内存 | 检查信号同步是否正确（先写后读） |
-| 部分正确 | Tiling 边界问题 | 检查 AlignUp 和 Tile 边界处理 |
-| NaN/Inf | FP16 溢出 | 检查 AtomicAdd 累积次数和数据范围 |
-| 接近但不精确 | FP16 精度限制 | 放宽 atol/rtol 阈值 |
+| All zeros | Transfer not executed/address error | Check remote address calculation and kernel startup |
+| Random value | Read into uninitialized memory | Check whether signal synchronization is correct (write first, then read) |
+| Partially correct | Tiling boundary issues | Check AlignUp and Tile boundary handling |
+| NaN/Inf | FP16 overflow | Check AtomicAdd accumulation times and data range |
+| Close but not exact | FP16 precision limits | Relax atol/rtol thresholds |
 
 ---
 
-## 3. 信号残留
+## 3. Signal residue
 
-**症状**：第一次运行正确，第二次运行结果错误或提前通过 barrier。
+**Symptoms**: The first run is correct, the second run results are wrong or the barrier is passed early.
 
-**原因**：信号矩阵未在每次运行前清零。
+**Cause**: The signal matrix is not cleared before each run.
 
-**修复**：
+**Fix**:
 
 ```cpp
 aclrtMemset(signal_matrix, signal_size, 0, signal_size);
@@ -55,49 +55,49 @@ aclrtSynchronizeStream(stream);
 
 ---
 
-## 4. 编译错误
+## 4. Compilation error
 
-| 错误信息 | 原因 | 解决 |
+| Error message | Cause | Solution |
 |---------|------|------|
-| `MEMORY_BASE` undefined | 编译选项缺少 `-DMEMORY_BASE` | CMakeLists 添加 target_compile_definitions |
-| `comm::` 符号未找到 | 未包含 `pto_comm_inst.hpp` | 检查 include 路径 |
-| `__gm__` 未定义 | CPU 编译时使用了 NPU 类型 | 检查 `#ifdef __CCE_AICORE__` 条件编译 |
-| link error: runtime | 未链接 runtime 库 | CMakeLists 添加 `target_link_libraries(... runtime)` |
+| `MEMORY_BASE` undefined | Missing compile option `-DMEMORY_BASE` | CMakeLists added target_compile_definitions |
+| `comm::` symbol not found | `pto_comm_inst.hpp` not included | Check include path |
+| `__gm__` undefined | CPU compiled with NPU type | Check `#ifdef __CCE_AICORE__` conditional compilation |
+| link error: runtime | Runtime library not linked | CMakeLists add `target_link_libraries(... runtime)` |
 
 ---
 
-## 5. TPUT_ASYNC 返回无效 event
+## 5. TPUT_ASYNC returns invalid event
 
-**症状**：`event.valid()` 返回 false（handle == 0）。
+**Symptoms**: `event.valid()` returns false (handle == 0).
 
-**原因**：
-- 传入的 tensor 不是扁平连续一维
-- BuildAsyncSession 失败（workspace 无效）
-- A5 平台 MTE fallback 完成时返回 handle=0（正常行为）
+**Reason**:
+- The incoming tensor is not a flat continuous one-dimensional
+- BuildAsyncSession failed (invalid workspace)
+- A5 platform MTE fallback returns handle=0 when completed (normal behavior)
 
-**排查**：
+**Troubleshooting**:
 
 ```cpp
 auto event = comm::TPUT_ASYNC(dstG, srcG, session);
 if (!event.valid()) {
-    // 检查 session.valid
-    // 检查 tensor 是否一维连续
-    // A5 平台下 MTE fallback 已完成，无需 Wait
+    // Check session.valid
+    // Check whether the tensor is one-dimensionally continuous
+    // MTE fallback under A5 platform has been completed, no need to wait
 }
 ```
 
 ---
 
-## 6. dcci 缓存一致性问题
+## 6. dcci cache consistency problem
 
-**症状**：Device 侧读到陈旧数据。
+**Symptoms**: Device reads stale data.
 
-**原因**：AICore 读 GM 可能命中 L1 缓存，看不到其他核的写入。
+**Cause**: AICore read GM may hit the L1 cache and not see writes from other cores.
 
-**解决**：
+**Solution**:
 
 ```cpp
 dcci((__gm__ void *)&shared_data, SINGLE_CACHE_LINE);
-__asm__ __volatile__("");  // 编译器屏障
+__asm__ __volatile__(""); // Compiler barrier
 int32_t value = shared_data;
 ```

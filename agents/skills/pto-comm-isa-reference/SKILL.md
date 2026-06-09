@@ -1,147 +1,147 @@
 ---
-name: PTO-COMM ISA 指令速查手册
-description: PTO 通信指令集完整参考手册。覆盖全部 12 条通信指令（TPUT/TGET/TNOTIFY/TWAIT/TTEST/TGATHER/TSCATTER/TBROADCAST/TREDUCE/TPUT_ASYNC/TGET_ASYNC 及 BuildAsyncSession）的签名、参数、约束、数据流和使用示例。触发：查询 PTO 通信指令用法、参数含义、约束条件、信号类型、ParallelGroup 用法、AsyncSession 构建方式时。
+name: PTO-COMM ISA Command Quick Reference Manual
+description: PTO communication command set complete reference manual. Covers signatures, parameters, constraints, data flows, and usage examples for all 12 communication instructions (TPUT/TGET/TNOTIFY/TWAIT/TTEST/TGATHER/TSCATTER/TBROADCAST/TREDUCE/TPUT_ASYNC/TGET_ASYNC and BuildAsyncSession). Triggered: When querying the usage of PTO communication instructions, parameter meanings, constraints, signal types, ParallelGroup usage, and AsyncSession construction methods.
 license: CANN Open Software License Agreement Version 2.0
 ---
 
-# PTO-COMM ISA 指令速查手册
+# PTO-COMM ISA Command Quick Reference Manual
 
-## 定位
+## Positioning
 
-本 Skill 是**知识库型**速查手册，提供 PTO-COMM 全部通信指令的快速索引。各指令按类别组织，包含签名、参数说明和关键约束。
+This Skill is a **knowledge base** quick reference manual that provides a quick index of all PTO-COMM communication instructions. Each instruction is organized into categories and contains signatures, parameter descriptions, and key constraints.
 
 ---
 
-## 头文件与命名空间
+## Header files and namespaces
 
 ```cpp
-#include <pto/comm/pto_comm_inst.hpp>  // 统一公共 API，只需此一个头文件
-#include <pto/pto-inst.hpp>            // PTO 核心指令（TLOAD/TSTORE 等）
+#include <pto/comm/pto_comm_inst.hpp> // Unified public API, only this one header file is needed
+#include <pto/pto-inst.hpp> // PTO core instructions (TLOAD/TSTORE, etc.)
 
 using namespace pto;
 using namespace pto::comm;
 ```
 
-`pto_comm_inst.hpp` 会根据编译宏自动分发到 NPU 原生实现或 CPU 仿真后端。
+`pto_comm_inst.hpp` is automatically distributed to the NPU native implementation or the CPU emulation backend based on the compilation macros.
 
 ---
 
-## 指令分类总览
+## Overview of command categories
 
-| 类别 | 指令 | 说明 |
+| Category | Command | Description |
 |------|------|------|
-| 点对点（同步） | `TPUT`、`TGET` | 通过 UB 暂存 Tile 的远程写/读，支持单缓冲和 ping-pong 双缓冲 |
-| 信号同步 | `TNOTIFY`、`TWAIT`、`TTEST` | 基于标志的跨 NPU 同步，信号为 `int32_t` 标量或二维网格 |
-| 集合通信 | `TGATHER`、`TSCATTER`、`TBROADCAST`、`TREDUCE` | 基于 `ParallelGroup` 的多 rank 操作，由 root 发起 |
-| 异步通信 | `TPUT_ASYNC`、`TGET_ASYNC` | 通过 SDMA/URMA 引擎的 GM→GM DMA 传输，返回 `AsyncEvent` |
+| Peer-to-peer (synchronous) | `TPUT`, `TGET` | Remote write/read via UB staging Tile, supports single buffering and ping-pong double buffering |
+| Signal synchronization | `TNOTIFY`, `TWAIT`, `TTEST` | Flag-based cross-NPU synchronization, signal is `int32_t` scalar or 2D grid |
+| Set communication | `TGATHER`, `TSCATTER`, `TBROADCAST`, `TREDUCE` | Multi-rank operation based on `ParallelGroup`, initiated by root |
+| Asynchronous communication | `TPUT_ASYNC`, `TGET_ASYNC` | GM→GM DMA transfer through SDMA/URMA engine, returning `AsyncEvent` |
 
-### 数据流模型
-
-```
-同步点对点（TPUT/TGET）：
-  本地 GM → UB Tile（暂存） → 远端 GM
-
-异步点对点（TPUT_ASYNC/TGET_ASYNC）：
-  本地 GM → DMA 引擎（SDMA/URMA） → 远端 GM（不经过 UB）
-
-集合通信（TGATHER/TSCATTER/TBROADCAST/TREDUCE）：
-  多 rank GM → UB Tile（暂存） → 本地 GM（自动二维分块滑动）
-```
-
----
-
-## 指令选择决策树
+### Data flow model
 
 ```
-需要在 NPU 间传输数据？
-├── 一对一传输
-│   ├── 需要 UB 中间暂存（Tile 级操作） → TPUT / TGET
-│   │   ├── 写到远端 → TPUT（支持 AtomicAdd）
-│   │   └── 从远端读 → TGET（不支持原子操作）
-│   └── 大块 GM→GM 直传（不经 UB） → TPUT_ASYNC / TGET_ASYNC
-│       ├── SDMA 引擎（通用） → DmaEngine::SDMA
-│       └── URMA 引擎（仅 A5） → DmaEngine::URMA
-│
-├── 多 rank 操作
-│   ├── 收集 → TGATHER
-│   ├── 分发 → TSCATTER
-│   ├── 广播 → TBROADCAST
-│   └── 归约 → TREDUCE
-│
-└── 仅需同步（无数据传输）
-    ├── 阻塞等待 → TWAIT
-    ├── 非阻塞检测 → TTEST
-    └── 发送通知 → TNOTIFY
+Synchronous point-to-point (TPUT/TGET):
+  Local GM → UB Tile (temporary storage) → remote GM
+
+Asynchronous point-to-point (TPUT_ASYNC/TGET_ASYNC):
+  Local GM → DMA engine (SDMA/URMA) → remote GM (without going through UB)
+
+Collective communication (TGATHER/TSCATTER/TBROADCAST/TREDUCE):
+  Multi-rank GM → UB Tile (temporary storage) → local GM (automatic two-dimensional tile sliding)
 ```
 
 ---
 
-## 核心类型速查
+## Instruction selection decision tree
 
-| 类型 | 用途 | 关键约束 |
+```
+Need to transfer data between NPUs?
+├── One-to-one transmission
+│ ├── Requires UB intermediate temporary storage (Tile level operation) → TPUT / TGET
+│ │ ├── Write to remote → TPUT (supports AtomicAdd)
+│ │ └── Read from remote → TGET (atomic operation not supported)
+│ └── Large block GM → GM direct transmission (without UB) → TPUT_ASYNC / TGET_ASYNC
+│ ├── SDMA Engine (Universal) → DmaEngine::SDMA
+│ └── URMA Engine (A5 only) → DmaEngine::URMA
+│
+├──Multi-rank operations
+│ ├── Collect → TGATHER
+│ ├── Distribution → TSCATTER
+│ ├── Broadcasting → TBROADCAST
+│ └── Reduce → TREDUCE
+│
+└── Sync only (no data transfer)
+    ├── Blocking wait → TWAIT
+    ├── Non-blocking test → TTEST
+    └── Send notification → TNOTIFY
+```
+
+---
+
+## Core type quick check
+
+| Type | Purpose | Key Constraints |
 |------|------|---------|
-| `Signal` | 标量同步信号 | `int32_t`，4 字节对齐 |
-| `Signal2D<R,C>` | 二维信号网格 | 编译期形状，支持子区域视图 |
-| `ParallelGroup<G>` | 集合通信分组 | 外部数组视图，所有 rank 必须传相同 `rootIdx` |
-| `NotifyOp` | 通知操作类型 | `AtomicAdd`（原子加）/ `Set`（直接赋值） |
-| `WaitCmp` | 比较运算符 | EQ / NE / GT / GE / LT / LE |
-| `ReduceOp` | 归约运算符 | Sum / Max / Min |
-| `AtomicType` | 原子操作类型 | `AtomicNone`（默认）/ `AtomicAdd` |
-| `DmaEngine` | DMA 引擎选择 | `SDMA`（通用）/ `URMA`（仅 A5） |
-| `AsyncEvent` | 异步事件句柄 | `Wait` 使用 Quiet 语义（等待所有 pending） |
-| `AsyncSession` | 异步会话 | 通过 `BuildAsyncSession` 构建 |
+| `Signal` | Scalar synchronization signal | `int32_t`, 4-byte aligned |
+| `Signal2D<R,C>` | 2D signal grid | Compile time shape, supports sub-region view |
+| `ParallelGroup<G>` | Collection communication group | External array view, all ranks must pass the same `rootIdx` |
+| `NotifyOp` | Notification operation type | `AtomicAdd` (atomic addition) / `Set` (direct assignment) |
+| `WaitCmp` | Comparison operators | EQ / NE / GT / GE / LT / LE |
+| `ReduceOp` | Reduction operator | Sum / Max / Min |
+| `AtomicType` | Atomic operation type | `AtomicNone` (default) / `AtomicAdd` |
+| `DmaEngine` | DMA engine selection | `SDMA` (general) / `URMA` (A5 only) |
+| `AsyncEvent` | Asynchronous event handler | `Wait` uses Quiet semantics (wait for all pending) |
+| `AsyncSession` | Asynchronous session | Built by `BuildAsyncSession` |
 
-**详细说明**：[核心类型详解](references/core-types.md)
+**Detailed description**: [Detailed explanation of core types](references/core-types.md)
 
 ---
 
-## 指令约束速查表
+## Command constraint cheat sheet
 
-| 指令 | 源地址 | 目标地址 | 需要 UB Tile | 原子操作 | 支持 Ping-Pong | 返回类型 |
+| Command | Source Address | Destination Address | Requires UB Tile | Atomic Operation | Supports Ping-Pong | Return Type |
 |------|--------|---------|-------------|---------|---------------|---------|
-| TPUT | 本地 | 远端 | 是 | AtomicNone/AtomicAdd | 是 | RecordEvent |
-| TGET | 远端 | 本地 | 是 | 不支持 | 是 | RecordEvent |
-| TNOTIFY | — | 远端 | 否 | Set/AtomicAdd | 否 | void |
-| TWAIT | 本地 | — | 否 | — | 否 | void |
-| TTEST | 本地 | — | 否 | — | 否 | bool |
-| TGATHER | 远端(多) | 本地 | 是 | — | 是 | RecordEvent |
-| TSCATTER | 本地 | 远端(多) | 是 | — | 是 | RecordEvent |
-| TBROADCAST | 本地 | 远端(多) | 是 | — | 是 | RecordEvent |
-| TREDUCE | 远端(多) | 本地 | 是(2~3) | — | 是 | RecordEvent |
-| TPUT_ASYNC | 本地 | 远端 | 否(需scratch) | — | 否 | AsyncEvent |
-| TGET_ASYNC | 远端 | 本地 | 否(需scratch) | — | 否 | AsyncEvent |
+| TPUT | Local | Remote | Yes | AtomicNone/AtomicAdd | Yes | RecordEvent |
+| TGET | Remote | Local | Yes | Not supported | Yes | RecordEvent |
+| TNOTIFY | — | Remote | No | Set/AtomicAdd | No | void |
+| TWAIT | local | — | no | — | no | void |
+| TTEST | local | — | no | — | no | bool |
+| TGATHER | Remote(Multiple) | Local | Yes | — | Yes | RecordEvent |
+| TSCATTER | local | remote(multiple) | yes | — | yes | RecordEvent |
+| TBROADCAST | local | remote(multiple) | yes | — | yes | RecordEvent |
+| TREDUCE | Remote (multiple) | Local | Yes (2~3) | — | Yes | RecordEvent |
+| TPUT_ASYNC | Local | Remote | No (requires scratch) | — | No | AsyncEvent |
+| TGET_ASYNC | Remote | Local | No (scratch required) | — | No | AsyncEvent |
 
 ---
 
-## 各类指令详解
+## Detailed explanation of various instructions
 
-| 类别 | 详细文档 |
+| Category | Detailed Documentation |
 |------|---------|
-| TPUT / TGET（同步 P2P） | [P2P 指令详解](references/p2p-instructions.md) |
-| TNOTIFY / TWAIT / TTEST（信号同步） | [信号同步指令详解](references/signal-instructions.md) |
-| TGATHER / TSCATTER / TBROADCAST / TREDUCE（集合通信） | [集合通信指令详解](references/collective-instructions.md) |
-| TPUT_ASYNC / TGET_ASYNC / BuildAsyncSession（异步通信） | [异步通信指令详解](references/async-instructions.md) |
+| TPUT / TGET (synchronous P2P) | [Detailed explanation of P2P instructions](references/p2p-instructions.md) |
+| TNOTIFY / TWAIT / TTEST (signal synchronization) | [Detailed explanation of signal synchronization instructions](references/signal-instructions.md) |
+| TGATHER / TSCATTER / TBROADCAST / TREDUCE (collective communication) | [Detailed explanation of collective communication instructions](references/collective-instructions.md) |
+| TPUT_ASYNC / TGET_ASYNC / BuildAsyncSession (asynchronous communication) | [Detailed explanation of asynchronous communication instructions](references/async-instructions.md) |
 
 ---
 
-## 常见错误速查
+## Common Errors Quick Check
 
-| # | 错误 | 规则 |
+| # | Error | Rules |
 |---|------|------|
-| 1 | TNOTIFY 发到本地 / TWAIT 等远端 | TNOTIFY → 远端，TWAIT/TTEST → 本地 |
-| 2 | 非 root 调用集合通信 | 仅 root 执行，非 root 不得调用 |
-| 3 | 乒乓 Tile UB 地址重叠 | pingTile 和 pongTile 使用不同 TASSIGN 偏移 |
-| 4 | 异步传输使用非一维 tensor | TPUT_ASYNC/TGET_ASYNC 仅支持扁平连续一维 |
-| 5 | Signal 类型不是 int32_t | Signal/Signal2D 元素类型必须为 `int32_t` |
-| 6 | ParallelGroup tensors 未初始化 | 远端地址必须正确设置 |
+| 1 | TNOTIFY to local/TWAIT and other remote | TNOTIFY → remote, TWAIT/TTEST → local |
+| 2 | Non-root call collective communication | Only root execution, non-root may not call |
+| 3 | Ping Pong Tile UB address overlap | pingTile and pongTile use different TASSIGN offsets |
+| 4 | Asynchronous transmission uses non-one-dimensional tensor | TPUT_ASYNC/TGET_ASYNC only supports flat continuous one-dimensional |
+| 5 | Signal type is not int32_t | Signal/Signal2D element type must be `int32_t` |
+| 6 | ParallelGroup tensors are not initialized | The remote address must be set correctly |
 
 ---
 
-## 相关 Skills
+## Related Skills
 
-| Skill | 用途 |
+| Skill | Purpose |
 |-------|------|
-| `pto-comm-operator-develop` | 基于 PTO-COMM 开发通信算子的完整流程 |
-| `pto-comm-testing-debug` | 通信算子测试与调试指南 |
-| `pto-comm-performance-optimization` | 通信算子性能优化 |
-| `vector-fusion-operator-generate` | PTO 向量融合算子开发指南 |
+| `pto-comm-operator-develop` | The complete process of developing communication operators based on PTO-COMM |
+| `pto-comm-testing-debug` | Communication operator testing and debugging guide |
+| `pto-comm-performance-optimization` | Communication operator performance optimization |
+| `vector-fusion-operator-generate` | PTO vector fusion operator development guide |

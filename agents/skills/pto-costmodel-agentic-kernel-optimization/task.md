@@ -1,178 +1,178 @@
-# AKO4PTO Task — PTO 算子优化
+# AKO4PTO Task — PTO operator optimization
 
-适用于 **PTO-DSL**（Python）和 **PTO-tile-lib**（C++）两种场景的 PTO 算子优化任务。
+PTO operator optimization tasks applicable to both **PTO-DSL** (Python) and **PTO-tile-lib** (C++) scenarios.
 
-## Skill 关系
+## Skill relationship
 
-本 skill 依赖同级目录下的 **PTO Costmodel 查询 skill**：
+This skill relies on the **PTO Costmodel query skill** in the same directory:
 
-- **`pto-costmodel-query-pto-cycles`** — 查询单条 PTO ISA 指令的仿真 cycles 数
-  - 路径：`agents/skills/pto-costmodel-query-pto-cycles/SKILL.md`
-  - 用途：在优化迭代中，通过 costmodel 分析不同 tile shape / 参数配置下 PTO 指令的 cycle 开销，指导优化方向
-  - 典型用法：`python3 tools/query_pto_cycles.py TMATMUL half half float --m 128 --k 64 --n 128`
-  - 能力：单条 PTO ISA 指令级 cycles 仿真（TMATMUL、TADD、TEXP 等），纯 CPU 运行，不需真实硬件
-  - 局限：不支持算子级（多指令组合）仿真
+- **`pto-costmodel-query-pto-cycles`** — Query the number of simulation cycles of a single PTO ISA instruction
+  - Path: `agents/skills/pto-costmodel-query-pto-cycles/SKILL.md`
+  - Purpose: In optimization iterations, use costmodel to analyze the cycle cost of PTO instructions under different tile shapes/parameter configurations to guide the optimization direction.
+  - Typical usage: `python3 tools/query_pto_cycles.py TMATMUL half half float --m 128 --k 64 --n 128`
+  - Capability: Single PTO ISA instruction level cycles simulation (TMATMUL, TADD, TEXP, etc.), pure CPU operation, no real hardware required
+  - Limitations: Operator-level (multi-instruction combination) simulation is not supported
 
-本 skill（`pto-costmodel-agentic-kernel-optimization`）在迭代过程中会调用 costmodel 来：
-1. 对比不同 tile 参数下的指令 cycle 开销
-2. 验证优化假设（如"更大 tile 的 TMATMUL 每 FLOP cycle 更低"）
-3. 指导参数搜索方向，减少盲目试错
+This skill (`pto-costmodel-agentic-kernel-optimization`) will call costmodel during the iteration process:
+1. Compare the instruction cycle overhead under different tile parameters
+2. Verify optimization assumptions (such as "larger tiles have lower TMATMUL per FLOP cycle")
+3. Guide the direction of parameter search and reduce blind trial and error.
 
-## 适用范围
+## Scope of application
 
-| 维度 | PTO-DSL (Python) | PTO-tile-lib (C++) |
+| Dimension | PTO-DSL (Python) | PTO-tile-lib (C++) |
 |------|------------------|---------------------|
-| 构建方式 | Python JIT (`wrapper._build()`) | CMake + `make -j16` + Bisheng |
-| 调参方式 | Python 环境变量 / kernel 参数 | C++ 模板参数、`.h` 常量、`.cpp` 内部参数 |
-| Benchmark | Python benchmark 脚本 → `report.json` | 编译二进制 → `report.csv` (duration_us, TFLOPS) |
-| 代码位置 | `workspace/pto-kernels/` 下 `.py` | `workspace/kernel/` 下 `.cpp`/`.hpp` |
-| 正确性 | `report.json` 中 `correctness.passes` | 内置 `ResultCmp` 输出 "test success"/"test failed" |
-| 典型算子 | `flash_attention_score`, `ffn`, etc. | `fa_performance`, etc. |
+| Build method | Python JIT (`wrapper._build()`) | CMake + `make -j16` + Bisheng |
+| Parameter adjustment method | Python environment variables/kernel parameters | C++ template parameters, `.h` constants, `.cpp` internal parameters |
+| Benchmark | Python benchmark script → `report.json` | Compile binary → `report.csv` (duration_us, TFLOPS) |
+| Code location | `.py` under `workspace/pto-kernels/` | `.cpp`/`.hpp` under `workspace/kernel/` |
+| Correctness | `correctness.passes` in `report.json` | Built-in `ResultCmp` output "test success"/"test failed" |
+| Typical operators | `flash_attention_score`, `ffn`, etc. | `fa_performance`, etc. |
 
-Agent 会根据用户提供的算子源码自动判断属于哪种场景，并选择对应的构建和 benchmark 流程。
-
----
-
-## 首要原则
-
-PTO 算子优化**不是**通用代码整理，而是面向硬件的瓶颈消除过程。
-
-每一次优化必须能回答以下四个问题，否则不要动手改代码：
-
-1. 当前瓶颈是什么
-2. 为什么这个改动能在 Ascend 上有效
-3. 预期改善哪个指标
-4. 如何保证正确性
-
-一个好的 PTO 优化是：**正确的、可衡量的、可重复的、瓶颈驱动的、有硬件依据的、足够可维护以保留下来**。不追求巧妙、复杂或理论上优雅。
+The Agent will automatically determine which scenario it belongs to based on the operator source code provided by the user, and select the corresponding construction and benchmark process.
 
 ---
 
-## 主流程
+## First principles
 
-按下面顺序执行。
+PTO operator optimization is not a general code tidying up, but a hardware-oriented bottleneck elimination process.
 
-### 1. 确认优化算子
+Every optimization must be able to answer the following four questions, otherwise do not change the code:
 
-**必须**向用户确认要优化的算子。有两种方式：
+1. What is the current bottleneck?
+2. Why does this change work on Ascend?
+3. Which indicator is expected to improve?
+4. How to ensure correctness
 
-- **用户直接给出算子源码路径**（如 `/path/to/flash_atten/`）
-- **Agent 扫描已知路径**：搜索项目中或用户指定的目录，发现可优化的算子并列表让用户选择
+A good PTO optimization is: **correct, measurable, repeatable, bottleneck-driven, hardware-based, and maintainable enough to be retained**. No pursuit of ingenuity, complexity, or theoretical elegance.
 
-确认算子后，Agent 应快速浏览源码，**自动判断**是 PTO-DSL 还是 PTO-tile-lib 类型：
-- 含 `.py` kernel 定义 + `pto_kernels` / `ptodsl` 相关导入 → PTO-DSL
-- 含 `CMakeLists.txt` + `.cpp`/`.hpp` + PTO tile 宏 → PTO-tile-lib
+---
 
-向用户确认判断结果。
+## Main process
 
-### 2. 确认优化 Case
+Execute in the following order.
 
-**必须**向用户确认本次优化的具体 case 配置：
+### 1. Confirm the optimization operator
 
-- **Shape**: 如 `S=32768, HEAD_SIZE=128, BATCH=1`（序列长度、头维度等）
-- **Dtype**: 如 `float16`、`bfloat16`
-- 是否 causal mask
-- 其他特殊配置
+**Must** confirm with the user the operator to be optimized. There are two ways:
 
-如果算子有多个可测 case，列出可选项让用户选择。
+- **The user directly gives the operator source code path** (such as `/path/to/flash_atten/`)
+- **Agent scans known paths**: Searches the directory in the project or specified by the user, finds operators that can be optimized, and lists them for the user to choose.
 
-### 3. 确认远程环境和 Costmodel
+After confirming the operator, the Agent should quickly browse the source code and **automatically determine** whether it is PTO-DSL or PTO-tile-lib type:
+- Contains `.py` kernel definition + `pto_kernels` / `ptodsl` related import → PTO-DSL
+- Contains `CMakeLists.txt` + `.cpp`/`.hpp` + PTO tile macro → PTO-tile-lib
 
-向用户确认：
-1. 远程服务器连接方式（使用哪个 connect skill）
-2. 是否使用 costmodel，costmodel 工具路径
-3. 算子在远程的部署路径（如果已有）
+Confirm the judgment results with the user.
 
-### 4. 自动创建项目工作区
+### 2. Confirm optimization Case
 
-获取以上信息后，Agent **自动**创建项目工作区，无需用户手动操作：
+**Must** confirm with the user the specific case configuration of this optimization:
+
+- **Shape**: such as `S=32768, HEAD_SIZE=128, BATCH=1` (sequence length, head dimension, etc.)
+- **Dtype**: such as `float16`, `bfloat16`
+- whether a causal mask is used
+- Other special configurations
+
+If the operator has multiple testable cases, list the options for the user to choose.
+
+### 3. Confirm the remote environment and Costmodel
+
+Confirm with the user:
+1. Remote server connection method (which connect skill to use)
+2. Whether to use costmodel, costmodel tool path
+3. The operator’s remote deployment path (if it already exists)
+
+### 4. Automatically create project workspace
+
+After obtaining the above information, Agent **automatically** creates the project workspace without manual operation by the user:
 
 ```bash
-# 从 project_template/ 复制基础结构
+# Copy infrastructure from project_template/
 mkdir -p projects/<operator_name>/
 cp -r project_template/* projects/<operator_name>/
 
-# 创建必要目录
+# Create necessary directories
 mkdir -p projects/<operator_name>/{context,runs,workspace}
 
-# 复制算子源码到隔离工作区
-# PTO-DSL: 复制到 workspace/pto-kernels/
-# PTO-tile-lib: 复制到 workspace/kernel/
+# Copy the operator source code to the isolated workspace
+# PTO-DSL: copy to workspace/pto-kernels/
+# PTO-tile-lib: copy to workspace/kernel/
 cp -r <source_path> projects/<operator_name>/workspace/<pto-kernels|kernel>/
 ```
 
-创建完成后：
-- 根据用户提供的 case 信息，**自动生成** `TASK_REQUIREMENTS.md`（含算子名、case 配置、可调参数等）
-- 向用户确认是否需要修改 `context/` 参考资料和 `TASK_REQUIREMENTS.md`
+After creation is complete:
+- Based on the case information provided by the user, **automatically generate** `TASK_REQUIREMENTS.md` (including operator name, case configuration, adjustable parameters, etc.)
+- Confirm with the user whether the `context/` reference and `TASK_REQUIREMENTS.md` need to be modified
 
-### 5. 读取任务上下文
+### 5. Read task context
 
-开始执行前先阅读：
+Read this before starting:
 - `projects/<operator_name>/TASK_REQUIREMENTS.md`
 - `projects/<operator_name>/context/`
-- 远程连接 skill（`connect-server`、`remote.md` 等）
-- `projects/<operator_name>/workspace/` 下所有与目标算子相关的源码
+- Remote connection skills (`connect-server`, `remote.md`, etc.)
+- All source code related to the target operator under `projects/<operator_name>/workspace/`
 
-在进入调优前，至少要明确：
+Before entering into tuning, at least make sure:
 
-| 维度 | PTO-DSL | PTO-tile-lib |
+| Dimension | PTO-DSL | PTO-tile-lib |
 |------|---------|--------------|
-| 入口函数 | kernel spec 路径 | 入口模板函数（如 `LaunchTFA<...>`） |
-| 可调参数 | Python 环境变量 / kernel 参数 | C++ 模板参数 / `.h` 常量 / `.cpp` 内部参数 |
-| benchmark 命令 | Python benchmark 脚本 | `./fa_performance --npu=0 --cases="..."` |
-| 正确性判定 | `report.json` 中 passes 字段 | "test success" / "test failed" |
-| 性能指标 | `report.json` 中 duration_ms / TFLOPS | `report.csv` 中 duration_us / TFLOPS |
-| 构建命令 | `wrapper._build()` | `cmake + make -j16` |
+| Entry function | kernel spec path | Entry template function (such as `LaunchTFA<...>`) |
+| Tunable parameters | Python environment variables / kernel parameters | C++ template parameters / `.h` constants / `.cpp` internal parameters |
+| benchmark command | Python benchmark script | `./fa_performance --npu=0 --cases="..."` |
+| Correctness judgment | passes field in `report.json` | "test success" / "test failed" |
+| Performance indicators | duration_ms / TFLOPS in `report.json` | duration_us / TFLOPS in `report.csv` |
+| Build command | `wrapper._build()` | `cmake + make -j16` |
 
-### 6. 打通远程链路
+### 6. Open the remote link
 
-如果远程环境是首次接入，第一优先级不是调优，而是把环境带到"可以稳定跑 benchmark"。
+If the remote environment is accessed for the first time, the first priority is not tuning, but bringing the environment to the point where it can run the benchmark stably.
 
-只有满足下面条件，才进入真正的性能迭代：
+Only when the following conditions are met can the real performance iteration be entered:
 
 **PTO-DSL**:
-1. SSH 连接成功
-2. 远程工作目录已建立，隔离工作区已上传
-3. 已确认远程 Python 路径和版本
-4. 至少成功跑出一份有效 `report.json`，确认 baseline 和 pto 都 benchmark ok + correctness passes
+1. SSH connection successful
+2. The remote working directory has been established and the isolation workspace has been uploaded.
+3. Remote Python path and version confirmed
+4. At least successfully run a valid `report.json`, and confirm that both baseline and pto have benchmark ok + correctness passes
 
 **PTO-tile-lib**:
-1. SSH 连接成功
-2. 远程工作目录已建立
-3. 远程已安装 Bisheng 编译器、CANN、ACL runtime
-4. 至少成功完成一次完整构建（`cmake + make`）
-5. 至少成功跑出一份有效结果：构建无错误 + "test success" + `report.csv` 有有效数据
+1. SSH connection successful
+2. The remote working directory has been established
+3. The Bisheng compiler, CANN, and ACL runtime are installed remotely
+4. Successfully complete at least one full build (`cmake + make`)
+5. Successfully run at least one valid result: no errors in the build + "test success" + `report.csv` has valid data
 
-如果以上任一项不满足，本轮应视为"环境打通轮"，优先修环境，不要急着改 kernel。
+If any of the above is not satisfied, this round should be regarded as an "environment clearing round", and priority should be given to repairing the environment instead of rushing to change the kernel.
 
-### 7. 跑 torch_npu Baseline
+### 7. Run torch_npu Baseline
 
-**在开始优化迭代前**，必须先跑一份 `torch.nn.functional.scaled_dot_product_attention`（或算子对应的 PyTorch 标准实现）的 baseline 性能数据，作为最终对比的参照。
+**Before starting the optimization iteration**, you must first run a copy of the baseline performance data of `torch.nn.functional.scaled_dot_product_attention` (or the PyTorch standard implementation corresponding to the operator) as a reference for the final comparison.
 
-在远程服务器上运行 PyTorch benchmark：
-- 使用与优化 case 相同的 shape、dtype 配置
-- 至少 warmup 5 次 + 10 次计时
-- 记录 avg、min、max duration 和 TFLOPS
-- 记入 `ITERATIONS.md` 的 torch_npu baseline 部分
+Run the PyTorch benchmark on the remote server:
+- Use the same shape and dtype configuration as the optimization case
+- At least 5 warmups + 10 times for timing
+- Record avg, min, max duration and TFLOPS
+- credited to torch_npu baseline section of `ITERATIONS.md`
 
-### 8. 进入性能迭代
+### 8. Enter performance iteration
 
-每次新会话开始调优前，必须先：
-1. 了解当前最佳结果
-2. 了解最近失败的假设
-3. 从当前已知最佳状态继续，不要盲目从头开始
-4. 参考 `projects/<operator_name>/context/` 和 `TASK_REQUIREMENTS.md`
+Before starting tuning in each new session, you must first:
+1. Understand the current best results
+2. Understand recent failed assumptions
+3. Continue from the best known state, don’t blindly start from scratch
+4. Refer to `projects/<operator_name>/context/` and `TASK_REQUIREMENTS.md`
 
-然后按下面的**优化规则**和**迭代协议**执行。
+Then execute according to the **Optimization Rules** and **Iteration Protocol** below.
 
 ---
 
-## 构建与运行流程
+## Build and run process
 
 ### PTO-DSL (Python)
 
 ```bash
-# 构建
+# Build
 python3 -c "from pto_kernels import <kernel>; wrapper._build()"
 
 # Benchmark
@@ -182,7 +182,7 @@ python3 bench_<kernel>.py --case "<shape_config>"
 ### PTO-tile-lib (C++)
 
 ```bash
-# 构建
+# Build
 cd workspace/kernel/
 rm -rf build && mkdir build && cd build
 python3 ../scripts/generate_cases.py --cases "<case_config>" --qk-preload <N>
@@ -196,155 +196,155 @@ python3 ../scripts/gen_data.py --cases "<case_config>"
 
 ---
 
-## 优化规则
+## Optimization rules
 
-### 一轮一假设
+### One hypothesis per round
 
-每轮迭代只测试 **一个** 假设。所有代码/参数修改必须服务于同一个假设。
+Only **one** hypothesis is tested per iteration. All code/parameter modifications must serve the same assumption.
 
-### 正确性先于性能
+### Correctness comes before performance
 
-每一轮必须按顺序执行：修改代码/参数 → 构建 → 跑正确性测试 → 只有通过后才跑性能测试。
+Each round must be executed in order: modify code/parameters → build → run correctness test → run performance test only after passing.
 
-- 正确性不通过 → 性能结果无效，记录并终止本轮
-- 不允许放宽容差（除非用户明确批准）
-- 不允许修改 benchmark workload 或验证逻辑来"提分"
+- Correctness failed → Performance result is invalid, record and terminate this round
+- No tolerance allowed (unless explicitly approved by the user)
+- Modification of benchmark workload or verification logic to "increase scores" is not allowed
 
-### 可编辑范围
+### Editable range
 
-默认只允许修改算子 kernel 源码和紧密相关的参数配置。
+By default, only the operator kernel source code and closely related parameter configurations are allowed to be modified.
 
-除非明确有 bug，否则不得修改 benchmark 脚本、运行 harness、测试逻辑、正确性阈值、workload shapes。永远不要通过让 benchmark 变简单来"提分"。
+Do not modify benchmark scripts, run harnesses, test logic, correctness thresholds, or workload shapes unless there is a clear bug. Never "improve" a benchmark by making it easier.
 
-### 强制瓶颈分类
+### Forced bottleneck classification
 
-每次改代码之前，必须将当前瓶颈归类为以下之一：
+Before each code change, the current bottleneck must be classified as one of the following:
 
-| 类别 | 说明 |
+| Category | Description |
 |---|---|
-| GMEM traffic bound | 全局内存带宽瓶颈 |
-| UB / tile buffer pressure | UB 缓冲压力 |
-| small-transfer inefficiency | 小包传输低效 |
-| compute under-utilization | 算力利用不足 |
-| AIC/AIV imbalance | Cube/vector 不平衡 |
-| pipeline bubble / poor overlap | 流水线气泡 / overlap 不足 |
-| barrier / wait / sync overhead | 同步开销过大 |
-| register pressure / occupancy loss | 寄存器压力 / 占用率下降 |
-| bad tile shape | tile 形状不佳 |
-| dependency chain too long | 依赖链过长 |
-| CV FIFO pressure | Cube-Vector FIFO 拥塞 |
-| unknown | 未知——必须先检查代码和 profiling 数据 |
+| GMEM traffic bound | Global memory bandwidth bottleneck |
+| UB / tile buffer pressure | UB buffer pressure |
+| small-transfer inefficiency | small packet transmission inefficiency |
+| compute under-utilization | Insufficient utilization of computing power |
+| AIC/AIV imbalance | Cube/vector imbalance |
+| pipeline bubble / poor overlap | pipeline bubble / insufficient overlap |
+| barrier / wait / sync overhead | synchronization overhead is too large |
+| register pressure / occupancy loss | register pressure / occupancy loss |
+| bad tile shape | tile bad shape |
+| dependency chain too long | dependency chain too long |
+| CV FIFO pressure | Cube-Vector FIFO congestion |
+| unknown | Unknown - must check code and profiling data first |
 
-### Ascend 硬件检查清单
+### Ascend Hardware Checklist
 
-每轮开始前必须逐项检查：
+Before starting each round, you must check each item:
 
-**Tile shape** — 分块合理性、计算单元填充率、tail 开销、UB 用量
+**Tile shape** — Tile rationality, computing unit filling rate, tail overhead, UB usage
 
-**GM ↔ UB 搬运** — 总搬运次数、冗余 reload/store-back、连续性、复用率
+**GM ↔ UB handling** — total handling times, redundant reload/store-back, continuity, reuse rate
 
-**小包风险** — 碎片化 copy、每 tile 输出是否太小、shape 是否破坏传输效率
+**Small packet risk** — Fragmented copy, whether the output of each tile is too small, whether the shape destroys the transmission efficiency
 
-**Barrier / wait / sync** — 数量、是否不必要地串行化
+**Barrier/wait/sync** — Amount, whether to serialize unnecessarily
 
-**UB 压力** — tile buffer + FIFO buffer + 临时 buffer 总占用
+**UB pressure** — tile buffer + FIFO buffer + temporary buffer total occupation
 
-**Pipeline overlap** — 各阶段的 overlap 是否充分
+**Pipeline overlap** — Whether the overlap of each stage is sufficient
 
-**AIC / AIV 平衡** — cube 和 vector 侧的负载是否平衡
+**AIC/AIV Balancing** — Whether the loads on the cube and vector sides are balanced
 
-**瓶颈转移风险** — 是否只是转移了瓶颈而非消除
+**Bottleneck transfer risk** — Is the bottleneck simply transferred rather than eliminated?
 
-### 优化优先级（从高到低）
+### Optimization priority (from high to low)
 
-1. **消除不必要的数据搬运** — 减少冗余 GM load/store，提高 UB 复用
-2. **修正不合理的 tile shape** — 改善 tile 维度以提升利用率和搬运效率
-3. **减少小包传输低效** — 合并或批量化小包传输
-4. **改善 load/compute/store overlap** — 改善稳态 pipeline overlap
-5. **减少 barrier/wait 开销** — 删除可证明无用的 barrier
-6. **降低 UB / 寄存器压力** — 缩短 live range，减少不利于 overlap 的临时 buffer
-7. **改善指令组织** — 重组计算以改善 AIC/AIV 平衡
-8. **微调只在以上问题都解决后进行**
+1. **Eliminate unnecessary data transfer** - Reduce redundant GM load/store and improve UB reuse
+2. **Correction of unreasonable tile shape** — Improve tile dimensions to improve utilization and handling efficiency
+3. **Reduce inefficiency of small packet transmission** — merge or batch small packet transmission
+4. **Improve load/compute/store overlap** — Improve steady-state pipeline overlap
+5. **Reduce barrier/wait overhead** — Remove barriers that prove to be useless
+6. **Reduce UB/register pressure** — shorten the live range and reduce the temporary buffer that is not conducive to overlap
+7. **Improve command organization** — Reorganize calculations to improve AIC/AIV balance
+8. **Fine-tuning will only be done after all the above problems are solved**
 
-### 高风险变更
+### High risk changes
 
-以下变更属于高风险，必须额外说明理由：
+The following changes are considered high risk and require additional justification:
 
-- 更大的 tile 可能导致 UB 爆炸或编译失败
-- 修改 FIFO 大小可能改变 kernel 语义
-- 删除 barrier 前缺少依赖证明
-- 指令重排可能改变数值行为
-- 没有硬件理由的"可能更快"的改动
+- Larger tiles may cause UB to explode or compile to fail
+- Modifying the FIFO size may change kernel semantics
+- Lack of dependency proof before removing barrier
+- Instruction rearrangement may change numerical behavior
+- "potentially faster" changes with no hardware justification
 
-### 禁止行为
+### Prohibited Behavior
 
-1. 一轮中做多个不相关的改动
-2. 跳过正确性测试
-3. 从单次噪声测量中声称胜利
-4. 修改 benchmark workload 或弱化验证逻辑来提高数字
-5. 没有瓶颈证据就做大规模重写
-6. 多次失败后继续随机 trial-and-error
-7. 隐藏失败的实验
-8. 为代码美观而优化，而非针对硬件瓶颈
-9. 仅基于理论推理就宣布成功
+1. Make multiple unrelated changes in one round
+2. Skip correctness testing
+3. Claim victory from a single noise measurement
+4. Modify the benchmark workload or weaken the verification logic to improve the numbers
+5. Do massive rewrites without evidence of bottlenecks
+6. Continue random trial-and-error after multiple failures
+7. Hide failed experiments
+8. Optimize for code beauty, not for hardware bottlenecks
+9. Declare success based on theoretical reasoning alone
 
-### 三轮失败规则
+### Three rounds of failure rules
 
-如果连续 3 轮没有实质性收益，必须停止盲目的局部微调：
+If there is no substantial benefit for 3 consecutive rounds, blind local fine-tuning must be stopped:
 
-1. 重新检查当前瓶颈分类
-2. 检查之前的轮次是否在攻击症状而非根因
-3. 寻找不同的优化方向
-4. 优先考虑结构性变化
-5. 可以通过上网搜寻相关资料参考
+1. Recheck the current bottleneck classification
+2. Check if previous rounds were attacking the symptoms rather than the root cause
+3. Find different optimization directions
+4. Prioritize structural changes
+5. You can search for relevant information and references online
 
 ---
 
-## 迭代协议
+## Iteration protocol
 
-每次"为了验证性能而进行的代码修改或参数调整"加上"一次构建和 benchmark 执行"，共同算作一轮迭代。迭代编号按顺序递增：`0, 1, 2, ...`（iter-0 为 baseline）。
+Each "code modification or parameter adjustment to verify performance" plus "a build and benchmark execution" are counted together as one iteration. The iteration numbers increase sequentially: `0, 1, 2, ...` (iter-0 is baseline).
 
-每轮完成后，必须做以下事项：
+After each round, you must do the following:
 
-1. 在 `projects/<operator_name>/runs/iter-XXX/` 下保存：
-   - `files.txt` — 本轮修改的文件列表
-   - `patch.diff` — 本轮代码 diff
-   - `notes.md` — 本轮详细记录
-2. 在 `projects/<operator_name>/ITERATIONS.md` 追加一行简约摘要
+1. Save under `projects/<operator_name>/runs/iter-XXX/`:
+   - `files.txt` — list of files modified in this round
+   - `patch.diff` — current round of code diff
+   - `notes.md` — detailed records of this round
+2. Add a simple summary line to `projects/<operator_name>/ITERATIONS.md`
 
-### patch.diff 记录规则
+### patch.diff record rules
 
-- **代码修改类迭代**：标准 `diff -u` 格式
-- **调参类迭代**：
+- **Code modification class iteration**: standard `diff -u` format
+- **Adjustment parameter class iteration**:
 ```
-# 本轮为调参类迭代
-# 参数变更：
+# This round is the parameter adjustment class iteration
+# Parameter changes:
 -  PARAM=old_value
 +  PARAM=new_value
-# 基于 iter-XXX 的配置
+# Configuration based on iter-XXX
 ```
 
-### Benchmark 纪律
+### Benchmark Discipline
 
-- **相同 workload**：前后对比必须使用相同 case
-- **可重复性**：重要性能结果必须多次运行
-- **噪声处理**：数据有噪声标记为 `inconclusive`
-- **胜利判定**：正确性通过 + 相同 workload + 改善可重复 + 收益大于噪声
+- **Same workload**: The same case must be used for comparison before and after
+- **Repeatability**: Important performance results must be run multiple times
+- **Noise processing**: Noisy data is marked as `inconclusive`
+- **Victory Judgment**: Correctness passed + same workload + improvement repeatable + benefit greater than noise
 
-### 结果判定
+### Result determination
 
-- `kept`：结果正确，且优于当前已知最好结果
-- `neutral`：结果正确，但没有优于当前前沿结果
-- `failure`：结果错误、编译失败，或本轮实验无效
-- `inconclusive`：数据波动较大，重跑确认
+- `kept`: The result is correct and better than the current best known result
+- `neutral`: the result is correct, but not better than the current frontier result
+- `failure`: The result is wrong, compilation fails, or this round of experiment is invalid
+- `inconclusive`: data fluctuates greatly, rerun to confirm
 
 ---
 
-## notes.md 记录要求
+## notes.md logging requirements
 
-### Pre-Edit（改代码前填写）
+### Pre-Edit (fill in before changing the code)
 
-- **Kernel**：目标算子名和当前配置
+- **Kernel**: target operator name and current configuration
 - **Current bottleneck**：
 - **Evidence**：
 - **Hypothesis**：
@@ -352,58 +352,58 @@ python3 ../scripts/gen_data.py --cases "<case_config>"
 - **Expected improved metric**：
 - **Main risk**：
 
-### Changes（改完代码后填写）
+### Changes (fill in after changing the code)
 
-- **修改类型**：代码修改 / 模板参数调整 / 环境变量 / 构建配置
-- **修改的文件**：列出所有修改的文件路径
-- **具体变更**：写明每个参数的旧值→新值，或代码修改的具体内容
-- **完整参数快照**：本轮所有参数配置（方便复现）
+- **Modification type**: code modification/template parameter adjustment/environment variable/build configuration
+- **Modified files**: List all modified file paths
+- **Specific changes**: State the old value → new value of each parameter, or the specific content of the code modification
+- **Complete parameter snapshot**: All parameter configurations of this round (easy to reproduce)
 
-### Post-Run（跑完 benchmark 后填写）
+### Post-Run (fill in after running the benchmark)
 
 - **Correctness**：pass / fail
-- **Performance**：写明具体数值（duration、TFLOPS 等）
+- **Performance**: Specify specific values (duration, TFLOPS, etc.)
 - **Stability**：stable / noisy
 - **Result**：kept / neutral / failure
 
 ### Analysis
 
-详细分析为什么有效或失败。
+Detailed analysis of why it works or fails.
 
 ### Next
 
-下一轮准备尝试什么。
+What to try next round.
 
-### 环境打通轮额外记录
+### Additional records for the environment clearing round
 
-远程环境版本信息、构建是否成功、首次有效结果路径、主要坑点。
+Remote environment version information, whether the build was successful, the first effective result path, and major pitfalls.
 
 ---
 
-## 收尾要求
+## Closing requirements
 
-优化结束后，**必须**生成一张总结对照图（PNG），风格参考 `projects/flash_attention/summary.png`。
+After the optimization is completed, a summary comparison picture (PNG) must be generated. The style refers to `projects/flash_attention/summary.png`.
 
-### 图表结构：上下双图
+### Chart structure: upper and lower double charts
 
-**上半部分 — 提升倍数折线图**：
-1. Y 轴：相对于初始 PTO 的 speedup 倍数（x）
-2. 折线：每轮实际 speedup（绿色）+ best frontier（橙色）
-3. 散点标记：绿色=kept、蓝色=neutral、红色叉=failure
-4. **阶段背景色**：不同优化阶段用不同颜色背景区分（如 baseline / costmodel-guided / 参数验证 / fine-tune）
-5. **里程碑标注**：关键提升点标注具体改动内容
-6. 顶部摘要：总迭代数、kept/neutral/failure 统计、最终 speedup、与 torch_npu 的对比
+**Upper half—improvement multiple line chart**:
+1. Y-axis: speedup multiple (x) relative to initial PTO
+2. Polyline: actual speedup in each round (green) + best frontier (orange)
+3. Scatter marks: green=kept, blue=neutral, red cross=failure
+4. **Stage background color**: Different optimization stages are distinguished by different color backgrounds (such as baseline / costmodel-guided / parameter verification / fine-tune)
+5. **Milestone Marking**: Key improvement points are marked with specific changes.
+6. Top summary: total iterations, kept/neutral/failure statistics, final speedup, comparison with torch_npu
 
-**下半部分 — 绝对延迟柱状图**：
-1. Y 轴：duration（us 或 ms，必要时可用 log scale）
-2. 柱状图颜色区分：灰色=baseline、绿色=kept、蓝色=neutral、红色=failure
-3. torch_npu 参考线（紫色虚线）
-4. 每根柱标注具体数值
+**Bottom Half - Absolute Latency Histogram**:
+1. Y axis: duration (us or ms, log scale can be used if necessary)
+2. Histogram color distinction: gray=baseline, green=kept, blue=neutral, red=failure
+3. torch_npu reference line (purple dotted line)
+4. Mark each column with a specific value.
 
-**底部**：文字说明 torch_npu / PTO initial / PTO best 数值和关键结论
+**Bottom**: Text description torch_npu / PTO initial / PTO best values and key conclusions
 
-### 迭代精简
+### Iterative simplification
 
-如果总迭代数较多（>10），X 轴只展示**关键迭代**：baseline、每次 kept、典型 failure、最终 best。将连续的 neutral/failure 压缩为代表性的一两个，无需逐个展示。
+If the total number of iterations is large (>10), the X-axis only shows the key iterations: baseline, each kept, typical failure, and final best. Condensing consecutive neutrals/failures into one or two representative ones without showing them one by one.
 
-保存到 `projects/<operator_name>/summary_chart.png`。
+Save to `projects/<operator_name>/summary_chart.png`.

@@ -1,8 +1,8 @@
-# 开发模式详解
+# Detailed explanation of development mode
 
-## 模式 1：P2P 通信
+## Mode 1: P2P communication
 
-最基础的模式，使用 TPUT/TGET 在两个 NPU 间传输数据。
+The most basic mode uses TPUT/TGET to transfer data between two NPUs.
 
 ```cpp
 #include <pto/comm/pto_comm_inst.hpp>
@@ -32,9 +32,9 @@ __global__ AICORE void P2PSendKernel(__gm__ half *local_data, __gm__ half *remot
 
 ---
 
-## 模式 2：集合通信
+## Mode 2: Collective communication
 
-使用内置的集合通信指令（适合标准场景）。
+Use built-in collective communication instructions (suitable for standard scenarios).
 
 ```cpp
 template <typename T, int NRANKS>
@@ -56,27 +56,27 @@ __global__ AICORE void ReduceKernel(__gm__ T *group_ptrs[NRANKS], __gm__ T *resu
 
 ---
 
-## 模式 3：自定义集合通信（TPUT + TNOTIFY/TWAIT）
+## Mode 3: Custom collective communication (TPUT + TNOTIFY/TWAIT)
 
-当内置集合通信指令不满足需求时（如 ReduceScatter + AllGather 组合实现 AllReduce），使用底层指令组合。
+When the built-in set communication instructions do not meet the needs (such as the ReduceScatter + AllGather combination to implement AllReduce), use the underlying instruction combination.
 
-### 方式 A：使用 TPUT\<AtomicAdd\>（推荐，一步完成 RS + Reduce）
+### Method A: Use TPUT\<AtomicAdd\> (recommended, complete RS + Reduce in one step)
 
-每个 rank 将自己的数据通过 `TPUT<AtomicAdd>` 直接累加到 owner rank 的输出缓冲区，无需独立的 Reduce 阶段。
+Each rank accumulates its own data directly to the output buffer of the owner rank through `TPUT<AtomicAdd>`, without the need for an independent Reduce stage.
 
 ```cpp
-// ReduceScatter：使用 TPUT<AtomicAdd> 直接累加到 owner
+// ReduceScatter: Use TPUT<AtomicAdd> to directly accumulate to owner
 AICORE inline void ReduceScatterViaTput(__gm__ half *local_src, __gm__ half *remote_dst,
                                         TileData &pingTile, TileData &pongTile)
 {
     Global srcG(local_src, shape, stride);
     Global dstG(remote_dst, shape, stride);
 
-    // TPUT<AtomicAdd> 自动处理流水线同步，内部分块滑动
+    // TPUT<AtomicAdd> automatically handles pipeline synchronization and internal block sliding
     comm::TPUT<AtomicType::AtomicAdd>(dstG, srcG, pingTile, pongTile);
 }
 
-// AllGather：使用 TPUT<AtomicNone> 直接写到远端
+// AllGather: Use TPUT<AtomicNone> to write directly to the remote end
 AICORE inline void AllGatherViaTput(__gm__ half *local_src, __gm__ half *remote_dst,
                                     TileData &pingTile, TileData &pongTile)
 {
@@ -87,12 +87,12 @@ AICORE inline void AllGatherViaTput(__gm__ half *local_src, __gm__ half *remote_
 }
 ```
 
-### 方式 B：使用 TLOAD/TSTORE_IMPL（更底层，需手动流水线同步）
+### Method B: Use TLOAD/TSTORE_IMPL (lower level, manual pipeline synchronization is required)
 
-需要在 TLOAD 和 TSTORE_IMPL 之间手动插入 `set_flag`/`wait_flag` 做流水线同步。适合需要在传输间插入自定义逻辑的场景。
+`set_flag`/`wait_flag` needs to be manually inserted between TLOAD and TSTORE_IMPL for pipeline synchronization. Suitable for scenarios where custom logic needs to be inserted between transmissions.
 
 ```cpp
-// ReduceScatter：手动流水线 + AtomicAdd
+// ReduceScatter: manual pipeline + AtomicAdd
 AICORE inline void ReduceScatterManual(__gm__ half *src_addr, __gm__ half *dst_addr,
                                        TileData &pingTile, TileData &pongTile, int pp_count)
 {
@@ -111,7 +111,7 @@ AICORE inline void ReduceScatterManual(__gm__ half *src_addr, __gm__ half *dst_a
     wait_flag(PIPE_MTE3, PIPE_MTE2, curEv);
 }
 
-// AllGather：手动流水线 + 普通写
+// AllGather: manual pipeline + normal write
 AICORE inline void AllGatherManual(__gm__ half *src_addr, __gm__ half *dst_addr,
                                    TileData &tile)
 {
@@ -127,18 +127,18 @@ AICORE inline void AllGatherManual(__gm__ half *src_addr, __gm__ half *dst_addr,
 }
 ```
 
-### 方式选择
+### Method selection
 
-| 方式 | 优点 | 缺点 | 适用 |
+| Method | Advantages | Disadvantages | Applicability |
 |------|------|------|------|
-| TPUT\<AtomicAdd\> | 代码简洁，自动流水线同步 | 灵活性低 | 标准 RS/AG 场景 |
-| TLOAD/TSTORE_IMPL | 可插入自定义逻辑 | 需手动 set_flag/wait_flag | 需要精细控制的场景 |
+| TPUT\<AtomicAdd\> | Simple code, automatic pipeline synchronization | Low flexibility | Standard RS/AG scenario |
+| TLOAD/TSTORE_IMPL | Custom logic can be inserted | Manual set_flag/wait_flag is required | Scenarios that require fine control |
 
 ---
 
-## 模式 4：通算融合（计算+通信重叠）
+## Mode 4: Computational fusion (computing + communication overlap)
 
-将计算 kernel 和通信 kernel 分别部署在不同的 AICore Block 上，通过 Stream 并行和队列同步实现重叠。
+The computing kernel and communication kernel are deployed on different AICore Blocks respectively, and overlap is achieved through Stream parallelism and queue synchronization.
 
 ```
 computeStream: [GEMM Block 0] [GEMM Block 1] ... [GEMM Block N]
@@ -149,22 +149,22 @@ computeStream: [GEMM Block 0] [GEMM Block 1] ... [GEMM Block N]
 commStream:    [RS: poll queues, TPUT<AtomicAdd>] → [Barrier] → [AG: TPUT<AtomicNone>]
 ```
 
-### 关键设计要素
+### Key Design Elements
 
-1. **双 Stream**：计算流（Cube kernel）和通信流（Vec kernel）并行执行
-2. **就绪队列**：计算完成后将 tile 索引入队，通信 kernel 轮询出队
-3. **信号矩阵**：跨 rank 同步，确保 RS 阶段完成后才开始 AG
-4. **Phase Barrier**：多阶段执行的 rank 间同步
+1. **Dual Stream**: Computational stream (Cube kernel) and communication stream (Vec kernel) are executed in parallel
+2. **Ready Queue**: After the calculation is completed, the tile index is queued, and the communication kernel polls it out of the queue.
+3. **Signal Matrix**: Cross-rank synchronization, ensuring that the RS phase is completed before starting AG
+4. **Phase Barrier**: Inter-rank synchronization of multi-stage execution
 
-### 就绪队列设计（SPSC 无锁队列）
+### Ready queue design (SPSC lock-free queue)
 
 ```cpp
-// 生产者端（计算 kernel）：
+// Producer side (compute kernel):
 PerBlockQueueEnqueueFast(cached_queue, tile_idx, local_slot);
 
-// 消费者端（通信 kernel）：使用 TTEST 硬件指令轮询
+// Consumer side (communication kernel): use TTEST hardware instruction polling
 comm::Signal sig(const_cast<__gm__ int32_t *>(&queue->count));
 if (!comm::TTEST(sig, local_head + 1, comm::WaitCmp::GE)) {
-    return -1;  // 无新数据
+    return -1; // No new data
 }
 ```
